@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProgressStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ───────────── Users & their progress ─────────────
+
+model User {
+  id       Int    @id @default(autoincrement())
+  username String @unique
+  email    String @unique
+  password String // store a hash (bcrypt/argon2), never plain text
+
+  progress UserProgress[] // "has made"
+
+  @@map("users")
+}
+
+// One row per (user, case). Replaces "cases completed" / "cases inprogress"
+model UserProgress {
+  id         Int            @id @default(autoincrement())
+  userId     Int
+  caseId     Int
+  status     ProgressStatus @default(IN_PROGRESS)
+  locationId Int? // current location ("at")
+  sequenceId Int? // current step in the case
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  case     Case          @relation(fields: [caseId], references: [id], onDelete: Cascade) // "in"
+  location Location?     @relation(fields: [locationId], references: [id])
+  step     CaseProgress? @relation(fields: [caseId, sequenceId], references: [caseId, sequenceId])
+
+  @@unique([userId, caseId])
+  @@map("user_progress")
+}
+
+// ───────────── Cases, NPCs, dialogue, locations ─────────────
+
+model Case {
+  id       Int    @id @default(autoincrement())
+  caseName String
+
+  dialogues    Dialogue[] // "npc says"
+  evidences    Evidence[]
+  steps        CaseProgress[] // "case progress as"
+  queries      Query[]
+  queryTables  QueryTable[]
+  userProgress UserProgress[]
+
+  @@map("cases")
+}
+
+model Npc {
+  id      Int    @id @default(autoincrement())
+  npcName String
+
+  dialogues Dialogue[] // "said in" (NPC <-> Case via Dialogue)
+
+  @@map("npcs")
+}
+
+model Location {
+  id           Int    @id @default(autoincrement())
+  locationName String
+
+  dialogues    Dialogue[]
+  steps        CaseProgress[]
+  userProgress UserProgress[]
+
+  @@map("locations")
+}
+
+model Dialogue {
+  id            Int      @id @default(autoincrement())
+  caseId        Int
+  npcId         Int
+  locationId    Int?
+  dialoguesList String[] // list of dialogue lines
+
+  case     Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  npc      Npc            @relation(fields: [npcId], references: [id])
+  location Location?      @relation(fields: [locationId], references: [id])
+  steps    CaseProgress[]
+
+  @@index([caseId])
+  @@index([npcId])
+  @@map("dialogues")
+}
+
+// ───────────── Case flow (sequence of steps) ─────────────
+
+// Each row is one step: either a dialogue or an evidence, at a location,
+// optionally requiring a query.
+model CaseProgress {
+  id         Int  @id @default(autoincrement())
+  caseId     Int
+  sequenceId Int // order of the step within the case
+  dialogueId Int? // dialogueid / evidenceid (one of the two)
+  evidenceId Int?
+  locationId Int?
+  queryId    Int? // "determines"
+
+  case         Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  dialogue     Dialogue?      @relation(fields: [dialogueId], references: [id])
+  evidence     Evidence?      @relation(fields: [evidenceId], references: [id])
+  location     Location?      @relation(fields: [locationId], references: [id])
+  query        Query?         @relation(fields: [queryId], references: [id])
+  userProgress UserProgress[]
+
+  @@unique([caseId, sequenceId])
+  @@map("case_progress")
+}
+
+// ───────────── Evidence, queries, investigation tables ─────────────
+
+model Evidence {
+  id           Int    @id @default(autoincrement())
+  caseId       Int
+  evidenceName String
+
+  case    Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  queries Query[] // "in" (evidences found in query output)
+  steps   CaseProgress[]
+
+  @@index([caseId])
+  @@map("evidences")
+}
+
+model Query {
+  id          Int    @id @default(autoincrement())
+  caseId      Int
+  queryOutput String // expected output of the query
+
+  case      Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  evidences Evidence[]
+  steps     CaseProgress[]
+
+  @@index([caseId])
+  @@map("queries")
+}
+
+// Data tables (logs, transactions, accounts...) used in cases
+model InvestigationTable {
+  id        Int    @id @default(autoincrement())
+  tableName String
+
+  queryTables QueryTable[]
+
+  @@map("investigation_tables")
+}
+
+// Which investigation tables are available to write queries for a case
+model QueryTable {
+  caseId  Int
+  tableId Int
+
+  case  Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  table InvestigationTable @relation(fields: [tableId], references: [id], onDelete: Cascade) // "needed for"
+
+  @@id([caseId, tableId])
+  @@map("query_tables")
+}

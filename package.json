@@ -1,0 +1,28 @@
+{
+  "name": "case-select",
+  "version": "1.0.0",
+  "description": "A web game, where people are given crime puzzles where they solve it using SQL commands.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShashankBadhautia/Case-SELECT.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/ShashankBadhautia/Case-SELECT/issues"
+  },
+  "homepage": "https://github.com/ShashankBadhautia/Case-SELECT#readme",
+  "dependencies": {
+    "@prisma/client": "^7.10.0",
+    "prisma": "^7.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3"
+  }
+}
