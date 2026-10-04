@@ -7,9 +7,6 @@
     "start": "node src/server.ts",
     "dev": "node --watch src/server.ts",
     "db:generate": "prisma generate --schema prisma/schema.prisma",
-    "db:dummy:migrate": "prisma migrate dev --schema prisma-dummy/schema.prisma --config prisma-dummy/prisma.config.ts",
-    "db:dummy:seed": "node prisma-dummy/seed.ts",
-    "db:dummy:setup": "npm run db:dummy:migrate && npm run db:dummy:seed",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -25,10 +22,8 @@
   },
   "homepage": "https://github.com/ShashankBadhautia/Case-SELECT#readme",
   "dependencies": {
-    "@prisma/adapter-better-sqlite3": "^7.10.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
-    "better-sqlite3": "^13.0.3",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
     "pg": "^8.23.1",

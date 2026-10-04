@@ -17,7 +17,7 @@ export class PrismaProvider implements DatabaseProvider {
   async connect(): Promise<void> {
     if (!config.databaseUrl) {
       throw new Error(
-        "DATABASE_URL is not set. The real database is not connected yet — see database.md, or run with DB_MODE=dummy.",
+        "DATABASE_URL is not set. The database is not connected yet — see database.md.",
       );
     }
     const { PrismaClient } = await import("../../generated/prisma/client.ts");

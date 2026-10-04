@@ -3,9 +3,8 @@
  *
  * The IDE only ever talks to this interface, which keeps it database-agnostic:
  * any database the backend can reach is exposed through a provider implementing
- * it. Two implementations exist:
- *   - DummyProvider  : local SQLite sample database (development/testing)
- *   - PrismaProvider : the application's real database via Prisma (PostgreSQL)
+ * it. PrismaProvider is currently the only implementation (PostgreSQL); adding
+ * another dialect means adding a provider, not touching the IDE.
  */
 
 export interface ColumnInfo {
@@ -48,7 +47,7 @@ export interface ConnectionStatus {
 }
 
 export interface DatabaseProvider {
-  /** Short label for the provider, e.g. "sqlite" or "postgresql". */
+  /** Short label for the provider, e.g. "postgresql". */
   readonly dialect: string;
 
   connect(): Promise<void>;

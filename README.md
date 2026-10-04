@@ -24,6 +24,10 @@ change rather than a code change.
 - Node.js 22.18+ (runs the TypeScript sources directly via native type stripping)
 - A PostgreSQL database
 
+No native build toolchain is required — `npm install` needs neither Visual Studio
+C++ build tools nor Python/node-gyp. The project is pure JavaScript against
+PostgreSQL.
+
 ## Getting started
 
 ```bash
@@ -45,17 +49,16 @@ npx prisma db push --schema prisma/schema.prisma
 
 ## Configuration
 
-| Variable       | Required | Default  | Description                                         |
-| -------------- | -------- | -------- | --------------------------------------------------- |
-| `DATABASE_URL` | yes      | —        | PostgreSQL connection string.                       |
-| `DB_MODE`      | no       | `prisma` | `prisma` (PostgreSQL) or `dummy` (SQLite, offline). |
-| `PORT`         | no       | `3000`   | Port the IDE listens on.                            |
+| Variable       | Required | Default  | Description                                   |
+| -------------- | -------- | -------- | --------------------------------------------- |
+| `DATABASE_URL` | yes      | —        | PostgreSQL connection string.                 |
+| `DB_MODE`      | no       | `prisma` | `prisma` (PostgreSQL) — the only mode.        |
+| `PORT`         | no       | `3000`   | Port the IDE listens on.                      |
 
 `DB_MODE` accepts case-insensitive aliases (`postgres`/`postgresql`/`pg`/`real`
-→ PostgreSQL; `dummy`/`sqlite` → SQLite). An unrecognised value is rejected at
-startup instead of falling back, so a typo can never silently point the IDE at
-the wrong database. Run `\status` in the terminal to confirm which database is
-active.
+→ PostgreSQL). An unrecognised value is rejected at startup instead of falling
+back, so a typo can never silently point the IDE at the wrong database. Run
+`\status` in the terminal to confirm which database is active.
 
 ## Terminal commands
 
@@ -85,18 +88,16 @@ SELECT "caseName" FROM cases WHERE "caseId" = 1;
 
 ## Scripts
 
-| Script                   | Description                                    |
-| ------------------------ | ---------------------------------------------- |
-| `npm run dev`            | Start the IDE with file watching               |
-| `npm start`              | Start the IDE                                  |
-| `npm run db:generate`    | Generate the Prisma client from `prisma/`      |
-| `npm run db:dummy:setup` | Create and seed the optional SQLite dummy DB   |
+| Script                | Description                               |
+| --------------------- | ----------------------------------------- |
+| `npm run dev`         | Start the IDE with file watching          |
+| `npm start`           | Start the IDE                             |
+| `npm run db:generate` | Generate the Prisma client from `prisma/` |
 
 ## Project layout
 
 ```
 prisma/          # Main PostgreSQL schema and migrations
-prisma-dummy/    # Optional SQLite dummy database (offline testing)
 src/
   config/        # Environment-driven configuration
   models/        # Provider interface, providers, factory

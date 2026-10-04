@@ -19,13 +19,11 @@ Every provider implements one contract:
 | `getSchema()`    | Return the database schema (tables + columns) for the explorer. |
 | `executeQuery()` | Run a SQL string and return rows or a normalized error.        |
 
-Two providers ship with the project:
+One provider ships with the project:
 
-- **`PrismaProvider`** (`src/models/prismaProvider.ts`) — **default.** The
+- **`PrismaProvider`** (`src/models/prismaProvider.ts`) — **default and only.** The
   application's PostgreSQL database, accessed through the main Prisma schema
   (`prisma/schema.prisma`) and the `@prisma/adapter-pg` driver adapter.
-- **`DummyProvider`** (`src/models/dummyProvider.ts`) — optional. A local SQLite
-  sample database used for offline testing only.
 
 The provider is selected by the `DB_MODE` environment variable in
 `src/models/providerFactory.ts` (default: `prisma`).
@@ -41,19 +39,21 @@ the process environment. Start from the template:
 cp .env.example .env
 ```
 
-| Variable             | Required | Default                  | Description                                              |
-| -------------------- | -------- | ------------------------ | -------------------------------------------------------- |
-| `DATABASE_URL`       | **yes**  | —                        | PostgreSQL connection string for the IDE.                |
-| `DB_MODE`            | no       | `prisma`                 | `prisma` (PostgreSQL, default) or `dummy` (SQLite).      |
-| `PORT`               | no       | `3000`                   | Port the IDE listens on.                                 |
-| `DUMMY_DATABASE_URL` | no       | `file:./dev.db`          | Only used when `DB_MODE=dummy`.                           |
+| Variable       | Required | Default  | Description                               |
+| -------------- | -------- | -------- | ----------------------------------------- |
+| `DATABASE_URL` | **yes**  | —        | PostgreSQL connection string for the IDE. |
+| `DB_MODE`      | no       | `prisma` | `prisma` (PostgreSQL, default and only).  |
+| `PORT`         | no       | `3000`   | Port the IDE listens on.                  |
 
 `DB_MODE` is case-insensitive and ignores surrounding whitespace. Accepted
-aliases: `prisma`, `postgres`, `postgresql`, `pg`, `real` → PostgreSQL;
-`dummy`, `sqlite` → SQLite. An unrecognised value is rejected at startup with an
-error rather than falling back, so a typo can never silently point the IDE at
-the wrong database. Leaving it unset or blank uses the default (`prisma`).
+aliases: `prisma`, `postgres`, `postgresql`, `pg`, `real` → PostgreSQL. An
+unrecognised value is rejected at startup with an error rather than falling back,
+so a typo can never silently point the IDE at the wrong database. Leaving it unset
+or blank uses the default (`prisma`).
 
+> `DB_MODE=dummy` / `sqlite` were removed along with the SQLite sample database.
+> They now fail at startup with a message telling you to use `prisma`.
+>
 > Check which database you are on with `\status` in the IDE terminal, or the
 > mode shown in the startup banner.
 
@@ -126,23 +126,7 @@ needs to change.
 
 ---
 
-## 5. Optional: the SQLite dummy database
-
-Only needed for offline testing without a PostgreSQL server. It is entirely
-separate from `prisma/` and contains generic sample tables (customers, orders,
-products, employees, departments, order_items).
-
-```bash
-npm run db:dummy:setup   # migrate + seed
-DB_MODE=dummy npm run dev
-```
-
-`npm run db:dummy:migrate` also regenerates the dummy Prisma client. Reset by
-deleting `prisma-dummy/dev.db` and re-running the setup.
-
----
-
-## 6. Frontend ↔ backend API contract
+## 5. Frontend ↔ backend API contract
 
 The frontend (`src/views/index.html` + `public/js/ide.js`) talks JSON to
 `/api/ide`.
@@ -195,17 +179,15 @@ but failed · `502` database unreachable / not connected.
 
 ---
 
-## 7. Project layout
+## 6. Project layout
 
 ```
 prisma/                 # Main PostgreSQL schema + migrations (application-owned).
-prisma-dummy/           # Optional SQLite dummy schema, migration, seed.
 generated/
   prisma/               # Generated client for the main schema.
-  prisma-dummy/         # Generated client for the dummy schema.
 src/
   config/               # Env-driven configuration (DB_MODE, DATABASE_URL, paths).
-  models/               # Provider interface, DummyProvider, PrismaProvider, factory.
+  models/               # Provider interface, PrismaProvider, factory.
   services/             # Connection, schema, query/command services.
   controllers/          # HTTP handlers for /api/ide.
   routes/               # Express routes.

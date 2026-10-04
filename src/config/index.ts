@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export type DatabaseMode = "prisma" | "dummy";
+export type DatabaseMode = "prisma";
 
 const DB_MODE_ALIASES: Record<string, DatabaseMode> = {
   prisma: "prisma",
@@ -12,9 +12,10 @@ const DB_MODE_ALIASES: Record<string, DatabaseMode> = {
   postgresql: "prisma",
   pg: "prisma",
   real: "prisma",
-  dummy: "dummy",
-  sqlite: "dummy",
 };
+
+/** Modes that used to select the optional SQLite dummy database, now removed. */
+const REMOVED_DB_MODES = new Set(["dummy", "sqlite"]);
 
 /**
  * Resolves DB_MODE to a known database mode. Throws on an unrecognised value
@@ -26,10 +27,16 @@ function resolveDatabaseMode(raw: string | undefined): DatabaseMode {
   if (value === "") {
     return "prisma";
   }
+  if (REMOVED_DB_MODES.has(value)) {
+    throw new Error(
+      `DB_MODE=${value} was removed: the SQLite dummy database no longer exists. ` +
+        `The IDE talks to PostgreSQL only — set DB_MODE=prisma or unset it entirely.`,
+    );
+  }
   const mode = DB_MODE_ALIASES[value];
   if (!mode) {
     throw new Error(
-      `Invalid DB_MODE "${raw}". Valid values: prisma (PostgreSQL) or dummy (SQLite). ` +
+      `Invalid DB_MODE "${raw}". Valid values: prisma (PostgreSQL). ` +
         `Accepted aliases: ${Object.keys(DB_MODE_ALIASES).join(", ")}.`,
     );
   }
@@ -40,9 +47,8 @@ export const config = {
   port: Number(process.env.PORT ?? 3000),
 
   /**
-   * Which database the SQL IDE talks to.
-   * - "prisma" : the application's real database via the main Prisma schema (default)
-   * - "dummy"  : local SQLite sample database (optional, for offline testing)
+   * Which database the SQL IDE talks to. "prisma" is currently the only mode:
+   * the application's real database via the main Prisma schema (default).
    */
   dbMode: resolveDatabaseMode(process.env.DB_MODE),
 
@@ -53,10 +59,6 @@ export const config = {
   // Paths are resolved relative to the project root (one level up from src/).
   paths: {
     root: path.join(__dirname, "..", ".."),
-    dummySchema: path.join(__dirname, "..", "..", "prisma-dummy", "schema.prisma"),
-    dummyMigrations: path.join(__dirname, "..", "..", "prisma-dummy", "migrations"),
-    dummyDatabase: path.join(__dirname, "..", "..", "prisma-dummy", "dev.db"),
-    dummyClient: path.join(__dirname, "..", "..", "generated", "prisma-dummy", "client.ts"),
     mainClient: path.join(__dirname, "..", "..", "generated", "prisma", "client.ts"),
     views: path.join(__dirname, "..", "views"),
     public: path.join(__dirname, "..", "..", "public"),
