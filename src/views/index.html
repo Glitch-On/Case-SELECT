@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Case-SELECT — SQL IDE</title>
+  <link rel="stylesheet" href="/css/ide.css" />
+</head>
+<body>
+  <header class="ide-header">
+    <div class="ide-brand">
+      <span class="ide-logo">⌘</span>
+      <h1>SQL IDE</h1>
+    </div>
+    <div class="ide-header-actions">
+      <span id="connection-status" class="status-badge status-disconnected">Disconnected</span>
+      <button id="btn-connect" class="btn btn-primary">Connect</button>
+      <button id="btn-disconnect" class="btn btn-ghost" disabled>Disconnect</button>
+    </div>
+  </header>
+
+  <main class="ide-main">
+    <aside class="ide-sidebar">
+      <div class="panel-header">
+        <h2>Schema</h2>
+        <button id="btn-refresh-schema" class="btn btn-icon" title="Refresh schema">⟳</button>
+      </div>
+      <div id="schema-explorer" class="schema-explorer">
+        <p class="empty-state">Connect to load the database schema.</p>
+      </div>
+    </aside>
+
+    <section class="ide-center">
+      <div class="editor-panel">
+        <div class="panel-header">
+          <h2>SQL Editor</h2>
+          <div class="editor-actions">
+            <span class="hint">Ctrl / ⌘ + Enter to run</span>
+            <button id="btn-run" class="btn btn-primary">Run ▸</button>
+          </div>
+        </div>
+        <div class="editor-wrap">
+          <pre id="editor-highlight" class="editor-highlight" aria-hidden="true"><code></code></pre>
+          <textarea
+            id="sql-editor"
+            class="editor-input"
+            spellcheck="false"
+            placeholder="-- Write your SQL here, e.g.&#10;SELECT * FROM customers LIMIT 10;"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="results-panel">
+        <div class="panel-header">
+          <h2>Results</h2>
+          <span id="results-meta" class="results-meta"></span>
+        </div>
+        <div id="results-container" class="results-container">
+          <p class="empty-state">Run a query to see results.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ide-terminal">
+    <div class="panel-header">
+      <h2>SQL / Database Terminal</h2>
+      <span class="hint">Use \commands — type \help for a list</span>
+    </div>
+    <div id="terminal-output" class="terminal-output"></div>
+    <form id="terminal-form" class="terminal-form">
+      <span class="terminal-prompt">&gt;</span>
+      <input id="terminal-input" class="terminal-input" type="text" autocomplete="off" spellcheck="false" placeholder="\dt, \d table, \connect, \help" />
+    </form>
+  </footer>
+
+  <script src="/js/ide.js"></script>
+</body>
+</html>
