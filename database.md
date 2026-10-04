@@ -48,6 +48,15 @@ cp .env.example .env
 | `PORT`               | no       | `3000`                   | Port the IDE listens on.                                 |
 | `DUMMY_DATABASE_URL` | no       | `file:./dev.db`          | Only used when `DB_MODE=dummy`.                           |
 
+`DB_MODE` is case-insensitive and ignores surrounding whitespace. Accepted
+aliases: `prisma`, `postgres`, `postgresql`, `pg`, `real` → PostgreSQL;
+`dummy`, `sqlite` → SQLite. An unrecognised value is rejected at startup with an
+error rather than falling back, so a typo can never silently point the IDE at
+the wrong database. Leaving it unset or blank uses the default (`prisma`).
+
+> Check which database you are on with `\status` in the IDE terminal, or the
+> mode shown in the startup banner.
+
 The root `prisma7.config.ts` reads `DATABASE_URL` for **every** Prisma CLI
 command (including `prisma generate`), so keep it set even before the real
 database is provisioned.
