@@ -49,7 +49,9 @@ export class PrismaProvider implements DatabaseProvider {
     this.ensureConnected();
     const tables = await this.client.$queryRawUnsafe(
       `SELECT table_name FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+       WHERE table_schema = current_schema()
+         AND table_type = 'BASE TABLE'
+         AND table_name <> '_prisma_migrations'
        ORDER BY table_name`,
     );
 
@@ -57,10 +59,23 @@ export class PrismaProvider implements DatabaseProvider {
     for (const row of tables) {
       const tableName = row.table_name as string;
       const columns = await this.client.$queryRawUnsafe(
-        `SELECT column_name, data_type, is_nullable
-         FROM information_schema.columns
-         WHERE table_schema = 'public' AND table_name = $1
-         ORDER BY ordinal_position`,
+        `SELECT c.column_name,
+                c.data_type,
+                c.is_nullable,
+                EXISTS (
+                  SELECT 1
+                  FROM information_schema.table_constraints tc
+                  JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                   AND tc.table_schema = kcu.table_schema
+                  WHERE tc.constraint_type = 'PRIMARY KEY'
+                    AND tc.table_schema = current_schema()
+                    AND tc.table_name = c.table_name
+                    AND kcu.column_name = c.column_name
+                ) AS is_pk
+         FROM information_schema.columns c
+         WHERE c.table_schema = current_schema() AND c.table_name = $1
+         ORDER BY c.ordinal_position`,
         tableName,
       );
       result.tables.push({
@@ -69,7 +84,7 @@ export class PrismaProvider implements DatabaseProvider {
           name: c.column_name,
           type: c.data_type,
           nullable: c.is_nullable === "YES",
-          isPrimaryKey: false,
+          isPrimaryKey: Boolean(c.is_pk),
         })),
       });
     }
@@ -109,7 +124,14 @@ export class PrismaProvider implements DatabaseProvider {
   }
 
   private messageOf(error: unknown): string {
-    if (error instanceof Error) return error.message;
+    if (error instanceof Error) {
+      const raw = error.message;
+      const match = raw.match(/Raw query failed\. Code: `[^`]+`\. Message: `([^`]+)`/);
+      if (match) return match[1];
+      const invocation = raw.match(/Invalid `[^`]+` invocation:\s*([\s\S]*)/);
+      if (invocation) return invocation[1].trim();
+      return raw;
+    }
     return String(error);
   }
 }

@@ -1,222 +1,205 @@
 # Database Connection Guide
 
-This document explains how the SQL IDE connects to a database, how to run it
-against the local dummy database, and how to switch to the real database.
-
-The SQL IDE is **database-agnostic**: it talks to the database exclusively
-through a provider interface (`src/models/databaseProvider.ts`). The active
-provider is chosen at runtime from configuration, so switching databases is a
-config change — not a code change.
+The SQL IDE connects to **PostgreSQL** by default. It is database-agnostic in
+design: the IDE talks to the database only through a provider interface
+(`src/models/databaseProvider.ts`), so the active database is a configuration
+decision rather than a code change.
 
 ---
 
 ## 1. How a database is expected to be connected
 
-The backend exposes a single contract that every database provider implements:
+Every provider implements one contract:
 
-| Method          | Purpose                                                        |
-| --------------- | -------------------------------------------------------------- |
-| `connect()`     | Open a connection to the configured database.                  |
-| `disconnect()`  | Close the connection.                                          |
-| `getStatus()`   | Report whether the IDE is currently connected.                 |
-| `getSchema()`   | Return the database schema (tables + columns) for the explorer. |
-| `executeQuery()`| Run a SQL string and return rows or a normalized error.        |
+| Method           | Purpose                                                        |
+| ---------------- | -------------------------------------------------------------- |
+| `connect()`      | Open a connection to the configured database.                  |
+| `disconnect()`   | Close the connection.                                          |
+| `getStatus()`    | Report whether the IDE is currently connected.                 |
+| `getSchema()`    | Return the database schema (tables + columns) for the explorer. |
+| `executeQuery()` | Run a SQL string and return rows or a normalized error.        |
 
 Two providers ship with the project:
 
-- **`DummyProvider`** (`src/models/dummyProvider.ts`) — local SQLite database
-  used for development and testing. This is the default.
-- **`PrismaProvider`** (`src/models/prismaProvider.ts`) — the application's real
-  database (PostgreSQL) via the main Prisma schema. Ships unconnected.
+- **`PrismaProvider`** (`src/models/prismaProvider.ts`) — **default.** The
+  application's PostgreSQL database, accessed through the main Prisma schema
+  (`prisma/schema.prisma`) and the `@prisma/adapter-pg` driver adapter.
+- **`DummyProvider`** (`src/models/dummyProvider.ts`) — optional. A local SQLite
+  sample database used for offline testing only.
 
-The provider is selected by the `DB_MODE` environment variable (see below) in
-`src/models/providerFactory.ts`.
+The provider is selected by the `DB_MODE` environment variable in
+`src/models/providerFactory.ts` (default: `prisma`).
 
 ---
 
 ## 2. Required environment variables / configuration
 
 Variables are read from a `.env` file in the project root (gitignored) and from
-the process environment. Copy `.env.example` to `.env` to get started.
+the process environment. Start from the template:
 
-| Variable            | Required | Default   | Description                                                        |
-| ------------------- | -------- | --------- | ------------------------------------------------------------------ |
-| `DB_MODE`           | no       | `dummy`   | `dummy` for the SQLite sample DB, `prisma` for the real database. |
-| `DUMMY_DATABASE_URL`| no       | `file:./dev.db` (relative to `prisma-dummy/schema.prisma`) | SQLite file path for the dummy database. |
-| `DATABASE_URL`      | yes (prisma mode) | — | PostgreSQL connection string for the real database. |
-| `PORT`              | no       | `3000`    | Port the web IDE listens on.                                       |
+```bash
+cp .env.example .env
+```
 
-> The root `prisma7.config.ts` (used by the main Prisma schema) requires
-> `DATABASE_URL` to be present in the environment for *any* Prisma CLI command,
-> including `prisma generate`. A placeholder value is provided in `.env.example`
-> so local tooling works while the real database stays unconnected.
+| Variable             | Required | Default                  | Description                                              |
+| -------------------- | -------- | ------------------------ | -------------------------------------------------------- |
+| `DATABASE_URL`       | **yes**  | —                        | PostgreSQL connection string for the IDE.                |
+| `DB_MODE`            | no       | `prisma`                 | `prisma` (PostgreSQL, default) or `dummy` (SQLite).      |
+| `PORT`               | no       | `3000`                   | Port the IDE listens on.                                 |
+| `DUMMY_DATABASE_URL` | no       | `file:./dev.db`          | Only used when `DB_MODE=dummy`.                           |
+
+The root `prisma7.config.ts` reads `DATABASE_URL` for **every** Prisma CLI
+command (including `prisma generate`), so keep it set even before the real
+database is provisioned.
 
 ---
 
 ## 3. Database connection format
 
-**Dummy (SQLite)** — a local file, no server required:
+PostgreSQL connection string:
 
 ```
-DUMMY_DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?schema=public"
 ```
 
-The path is resolved relative to `prisma-dummy/schema.prisma`, so the default
-creates `prisma-dummy/dev.db`.
-
-**Real (PostgreSQL)** — a standard connection string:
+Variants:
 
 ```
-DATABASE_URL="postgresql://user:password@host:5432/dbname?schema=public"
+# Managed Postgres (Neon / Supabase / RDS) — use the pooled or direct URL your provider gives you
+postgresql://user:password@ep-example.us-east-2.aws.neon.tech/dbname?schema=public
+
+# Local development
+postgresql://postgres:postgres@localhost:5432/case_select?schema=public
 ```
 
-The real database uses the main Prisma schema (`prisma/schema.prisma`), whose
-datasource is PostgreSQL. Prisma 7 connects through the `@prisma/adapter-pg`
-driver adapter; the connection string is passed to it at runtime.
+Optional query parameters: `schema` (defaults to `public`), `sslmode`,
+`connection_limit`.
+
+> **Quoted identifiers.** Prisma maps camelCase model fields to camelCase
+> PostgreSQL columns (e.g. `caseName` → `"caseName"`). PostgreSQL folds unquoted
+> identifiers to lowercase, so raw SQL must quote them:
+> `SELECT * FROM cases WHERE "caseId" = 1`. Lowercase / `snake_case` columns
+> such as `users.username` need no quotes. The schema explorer shows the exact
+> column names as stored, so copy them from there.
 
 ---
 
-## 4. How to replace the dummy database with the real database
-
-1. Set a real PostgreSQL connection string in `.env`:
-
-   ```
-   DATABASE_URL="postgresql://user:password@host:5432/dbname"
-   ```
-
-2. Switch the IDE into real-database mode:
-
-   ```
-   DB_MODE=prisma
-   ```
-
-3. Restart the IDE (`npm run dev`). The provider factory will now build a
-   `PrismaProvider` instead of a `DummyProvider`.
-
-4. In the IDE, click **Connect** (or run `\connect` in the terminal). The schema
-   explorer will load the real database's tables, and queries will run against
-   it.
-
-To go back to the dummy database, set `DB_MODE=dummy` (or remove the line) and
-restart.
-
-> The dummy schema (`prisma-dummy/`) is fully self-contained and never imports
-> from the main `prisma/` schema, so the two can evolve independently.
-
----
-
-## 5. How to start / test the database locally
-
-The dummy database is a SQLite file created and seeded locally — no external
-database server is needed.
+## 4. Setup
 
 ```bash
 # 1. Install dependencies
 npm install
 
-# 2. Create the dummy database tables (generates a migration)
-npm run db:dummy:migrate
+# 2. Put your PostgreSQL connection string in .env
+cp .env.example .env
+#    edit DATABASE_URL
 
-# 3. Seed it with generic sample data
-npm run db:dummy:seed
+# 3. Generate the Prisma client for the main schema
+npm run db:generate
 
-#    …or run both steps together:
-npm run db:dummy:setup
+# 4. Create the tables in your database (dev only)
+npx prisma db push --schema prisma/schema.prisma
 
-# 4. Start the IDE
+# 5. Start the IDE
 npm run dev
 ```
 
-Then open http://localhost:3000, click **Connect**, and run queries such as:
+Open http://localhost:3000, click **Connect**, and the schema explorer loads
+your PostgreSQL schema.
 
-```sql
-SELECT * FROM customers LIMIT 10;
-SELECT c.firstName, o.status, o.total
-FROM customers c JOIN orders o ON o.customerId = c.id;
+> Step 4 (`db push`) is for local development. Use
+> `npx prisma migrate deploy` against real environments.
+
+### Pointing the IDE at a different PostgreSQL database
+
+Edit `DATABASE_URL` in `.env` and restart (`npm run dev`). Nothing in `src/`
+needs to change.
+
+---
+
+## 5. Optional: the SQLite dummy database
+
+Only needed for offline testing without a PostgreSQL server. It is entirely
+separate from `prisma/` and contains generic sample tables (customers, orders,
+products, employees, departments, order_items).
+
+```bash
+npm run db:dummy:setup   # migrate + seed
+DB_MODE=dummy npm run dev
 ```
 
-Useful terminal commands: `\dt` (list tables), `\d <table>` (describe a table),
-`\status`, `\history`, `\help`.
-
-To reset the dummy database, delete `prisma-dummy/dev.db` and re-run
-`npm run db:dummy:setup`.
-
-> `npm run db:dummy:migrate` also (re)generates the dummy Prisma client as a
-> side effect, so no separate generate step is needed for dummy mode. For
-> `DB_MODE=prisma`, generate the main client once `DATABASE_URL` is set:
-> `npx prisma generate --schema prisma/schema.prisma`.
+`npm run db:dummy:migrate` also regenerates the dummy Prisma client. Reset by
+deleting `prisma-dummy/dev.db` and re-running the setup.
 
 ---
 
 ## 6. Frontend ↔ backend API contract
 
-The IDE frontend (`src/views/index.html` + `public/js/ide.js`) communicates with
-the backend over JSON under `/api/ide`. All endpoints are prefixed with
+The frontend (`src/views/index.html` + `public/js/ide.js`) talks JSON to
 `/api/ide`.
 
-| Method | Endpoint              | Body                  | Response                                                                 |
-| ------ | --------------------- | --------------------- | ------------------------------------------------------------------------ |
-| GET    | `/status`             | —                     | `{ connected, mode, message }`                                           |
-| POST   | `/connect`            | —                     | `{ connected, mode, message }` (502 on failure)                           |
-| POST   | `/disconnect`         | —                     | `{ connected, mode, message }`                                           |
-| GET    | `/schema`             | —                     | `{ tables: [{ name, columns: [{ name, type, nullable, isPrimaryKey }] }] }` |
-| POST   | `/query`              | `{ sql }`             | `ExecuteOutcome` (see below)                                             |
-| POST   | `/command`            | `{ input }`           | `ExecuteOutcome` (see below)                                             |
+| Method | Endpoint       | Body      | Response                                        |
+| ------ | -------------- | --------- | ----------------------------------------------- |
+| GET    | `/status`      | —         | `{ connected, mode, message }`                  |
+| POST   | `/connect`     | —         | `{ connected, mode, message }`                  |
+| POST   | `/disconnect`  | —         | `{ connected, mode, message }`                  |
+| GET    | `/schema`      | —         | `{ tables: [{ name, columns: [...] }] }`        |
+| POST   | `/query`       | `{ sql }`  | `ExecuteOutcome`                                |
+| POST   | `/command`     | `{ input }`| `ExecuteOutcome`                                |
 
-**`ExecuteOutcome`** — the shared response shape for `/query` and `/command`:
+`ExecuteOutcome` on success:
 
 ```json
 {
   "success": true,
   "result": {
-    "columns": ["id", "firstName"],
-    "rows": [{ "id": 1, "firstName": "Frank" }],
+    "columns": ["id", "username"],
+    "rows": [{ "id": 1, "username": "ada" }],
     "rowCount": 1,
-    "durationMs": 1.23
+    "durationMs": 5.78
   },
-  "message": "1 row(s) returned in 1.23 ms"
+  "message": "1 row(s) returned in 5.78 ms"
 }
 ```
 
-On failure, `success` is `false` and an `error` string is returned instead of
-`result`:
+On failure (`success: false`, no `result`):
 
 ```json
-{ "success": false, "error": "no such table: nope" }
+{ "success": false, "error": "relation \"no_such_table\" does not exist" }
 ```
 
-**HTTP status codes**
+**Status codes** — `200` success · `400` malformed request · `422` statement ran
+but failed · `502` database unreachable / not connected.
 
-- `200` — success.
-- `400` — malformed request (missing/empty `sql` or `input`).
-- `422` — the statement ran but failed (SQL error, unknown command).
-- `502` — the backend could not reach the database (e.g. not connected, or the
-  real database is unreachable).
+### Terminal commands
 
-The terminal's `\clear` command returns a `message` of `__CLEAR__`, which the
-frontend uses to wipe the terminal output.
+| Command      | Effect                                    |
+| ------------ | ----------------------------------------- |
+| `\connect`   | Connect to the configured database        |
+| `\disconnect`| Disconnect                                |
+| `\status`    | Connection status                         |
+| `\dt`        | List tables                               |
+| `\d <table>` | Describe a table's columns                |
+| `\history`   | Executed query history                    |
+| `\help`      | Help                                      |
+| `\clear`     | Clear the terminal                        |
 
 ---
 
-## 7. Project layout (relevant to the database)
+## 7. Project layout
 
 ```
-prisma/                 # Main (real) application schema — PostgreSQL. Off-limits to the IDE.
-prisma-dummy/           # Dummy SQLite schema, migration, and seed for local testing.
-  schema.prisma
-  prisma.config.ts
-  seed.ts
-  migrations/
-  dev.db                # Generated SQLite file (gitignored)
+prisma/                 # Main PostgreSQL schema + migrations (application-owned).
+prisma-dummy/           # Optional SQLite dummy schema, migration, seed.
 generated/
-  prisma/               # Generated client for the main schema (real DB).
+  prisma/               # Generated client for the main schema.
   prisma-dummy/         # Generated client for the dummy schema.
 src/
-  config/               # Env-driven configuration (DB_MODE, paths, port).
-  models/               # Provider interface + DummyProvider + PrismaProvider + factory.
-  services/             # Connection, schema, and query/command services.
-  controllers/          # HTTP handlers for the /api/ide endpoints.
-  routes/               # Express route definitions.
+  config/               # Env-driven configuration (DB_MODE, DATABASE_URL, paths).
+  models/               # Provider interface, DummyProvider, PrismaProvider, factory.
+  services/             # Connection, schema, query/command services.
+  controllers/          # HTTP handlers for /api/ide.
+  routes/               # Express routes.
   middleware/           # 404 + error handling.
   views/index.html      # The SQL IDE page.
 public/

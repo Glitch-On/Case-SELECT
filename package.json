@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.ts",
     "dev": "node --watch src/server.ts",
+    "db:generate": "prisma generate --schema prisma/schema.prisma",
     "db:dummy:migrate": "prisma migrate dev --schema prisma-dummy/schema.prisma --config prisma-dummy/prisma.config.ts",
     "db:dummy:seed": "node prisma-dummy/seed.ts",
     "db:dummy:setup": "npm run db:dummy:migrate && npm run db:dummy:seed",

@@ -1,11 +1,13 @@
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import type { DatabaseProvider, ExecuteOutcome, QueryResult, SchemaInfo } from "./databaseProvider.ts";
 import { serializeRows } from "../utils/serialize.ts";
+import { config } from "../config/index.ts";
 
 /**
- * Development/testing provider backed by the local SQLite dummy database.
- * Uses the Prisma client generated from prisma-dummy/schema.prisma so the
- * query path is identical to the real database provider.
+ * Optional offline provider backed by the local SQLite dummy database.
+ * Only used when DB_MODE=dummy; PostgreSQL is the default. Uses the Prisma
+ * client generated from prisma-dummy/schema.prisma so the query path is
+ * identical to the PostgreSQL provider.
  */
 export class DummyProvider implements DatabaseProvider {
   readonly dialect = "sqlite";
@@ -14,7 +16,7 @@ export class DummyProvider implements DatabaseProvider {
 
   async connect(): Promise<void> {
     const { PrismaClient } = await import("../../generated/prisma-dummy/client.ts");
-    const adapter = new PrismaBetterSqlite3({ url: "file:prisma-dummy/dev.db" });
+    const adapter = new PrismaBetterSqlite3({ url: `file:${config.paths.dummyDatabase}` });
     this.client = new PrismaClient({ adapter });
     await this.client.$connect();
     this.connected = true;

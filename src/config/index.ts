@@ -9,13 +9,13 @@ export const config = {
 
   /**
    * Which database the SQL IDE talks to.
-   * - "dummy"  : local SQLite sample database (default, for development/testing)
-   * - "prisma" : the application's real database via the main Prisma schema
+   * - "prisma" : the application's real database via the main Prisma schema (default)
+   * - "dummy"  : local SQLite sample database (optional, for offline testing)
    */
-  dbMode: (process.env.DB_MODE ?? "dummy") as "dummy" | "prisma",
+  dbMode: (process.env.DB_MODE ?? "prisma") as "dummy" | "prisma",
 
-  // Connection string for the real database (prisma mode). Left unconnected
-  // for the prototype — see database.md for how to provide a real one.
+  // Connection string for the real database (prisma mode). Set DATABASE_URL to
+  // your PostgreSQL connection string — see database.md.
   databaseUrl: process.env.DATABASE_URL ?? "",
 
   // Paths are resolved relative to the project root (one level up from src/).
