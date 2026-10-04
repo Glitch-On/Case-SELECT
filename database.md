@@ -28,6 +28,29 @@ One provider ships with the project:
 The provider is selected by the `DB_MODE` environment variable in
 `src/models/providerFactory.ts` (default: `prisma`).
 
+### Connection pinning
+
+`PrismaProvider` creates its own `pg.Pool` with `max: 1` and hands it to
+`PrismaPg` via `disposeExternalPool`, so the pool is torn down by
+`$disconnect()`. Pinning to one connection is what makes transaction control
+(`BEGIN` / `COMMIT` / `ROLLBACK` / `SAVEPOINT`) reliable: with the adapter's
+default pool a later statement could be dispatched to a different connection
+and silently escape the open transaction. The trade-off is that queries are
+serialized — one slow query blocks the others.
+
+### Multiple statements
+
+`executeQuery()` takes a **single** statement. The driver adapter cannot run a
+multi-statement batch: `node-postgres` returns one result per statement and
+`@prisma/adapter-pg` destructures that array as a single result, which surfaced
+as `Cannot read properties of undefined (reading 'map')`.
+
+`queryService.runQuery()` therefore splits the script first (see
+`src/utils/sqlStatements.ts`) and calls the provider once per statement,
+returning an ordered `statements[]` array. The provider also rejects a
+multi-statement string defensively, so an adapter `TypeError` can never reach
+the user.
+
 ---
 
 ## 2. Required environment variables / configuration
@@ -161,6 +184,33 @@ On failure (`success: false`, no `result`):
 { "success": false, "error": "relation \"no_such_table\" does not exist" }
 ```
 
+When `sql` contains more than one statement, `statements` is present instead of
+`result`, in execution order. Execution stops at the first failure, so the array
+may be shorter than the number of statements submitted:
+
+```json
+{
+  "success": false,
+  "statements": [
+    {
+      "index": 1,
+      "statement": "SELECT * FROM cases",
+      "success": true,
+      "result": { "columns": ["id"], "rows": [{ "id": 1 }], "rowCount": 1, "durationMs": 4.1 },
+      "message": "1 row(s) returned in 4.1 ms"
+    },
+    {
+      "index": 2,
+      "statement": "SELECT * FROM nope",
+      "success": false,
+      "error": "relation \"nope\" does not exist"
+    }
+  ],
+  "message": "Stopped at statement 2 of 3 — 1 of 2 executed statement(s) succeeded.",
+  "error": "relation \"nope\" does not exist (statement 2 of 3)"
+}
+```
+
 **Status codes** — `200` success · `400` malformed request · `422` statement ran
 but failed · `502` database unreachable / not connected.
 
@@ -192,8 +242,10 @@ src/
   controllers/          # HTTP handlers for /api/ide.
   routes/               # Express routes.
   middleware/           # 404 + error handling.
+  utils/                # Row serialization, SQL statement splitting.
   views/index.html      # The SQL IDE page.
 public/
   css/ide.css           # IDE styling.
+test/                    # Unit tests (npm test).
   js/ide.js             # IDE frontend logic.
 ```

@@ -404,6 +404,51 @@ body {
   font-size: 13px;
 }
 
+/* Multi-statement results: one labelled block per statement. */
+
+.result-block + .result-block {
+  border-top: 1px solid var(--border);
+}
+
+.result-block-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+  cursor: help;
+}
+
+.result-block-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.result-block-meta {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.result-block-meta.is-error {
+  color: var(--error);
+}
+
+.result-block .results-table {
+  margin: 0;
+}
+
+.result-block-skipped {
+  padding: 10px 16px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
 /* ── Terminal ───────────────────────────────────────── */
 
 .ide-terminal {

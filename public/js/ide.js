@@ -147,20 +147,80 @@ async function runQuery() {
 
   const outcome = await api.query(sql);
 
-  if (outcome.success) {
+  if (Array.isArray(outcome.statements) && outcome.statements.length > 0) {
+    renderStatementResults(outcome);
+  } else if (outcome.success) {
     renderResults(outcome.result, outcome.message);
   } else {
     renderError(outcome.error);
   }
 }
 
-function renderResults(result, message) {
-  if (!result || result.rows.length === 0) {
-    els.resultsMeta.textContent = message || "0 rows";
-    els.resultsContainer.innerHTML = `<p class="result-success">${escapeHtml(message || "Query executed successfully.")}</p>`;
-    return;
+/**
+ * Renders one labelled block per statement for a multi-statement script.
+ * Execution stops at the first failure, so the blocks stop there too.
+ */
+function renderStatementResults(outcome) {
+  const statements = outcome.statements;
+  const failed = statements.find((statement) => !statement.success);
+
+  els.resultsMeta.textContent = outcome.message || `${statements.length} statement(s)`;
+  els.resultsContainer.innerHTML = "";
+
+  for (const statement of statements) {
+    const block = document.createElement("section");
+    block.className = "result-block";
+
+    const header = document.createElement("div");
+    header.className = "result-block-header";
+    // Hovering the header reveals the exact SQL that produced this block.
+    header.title = statement.statement.trim();
+
+    const title = document.createElement("span");
+    title.className = "result-block-title";
+    title.textContent = `Statement ${statement.index}`;
+
+    const meta = document.createElement("span");
+    meta.className = statement.success ? "result-block-meta" : "result-block-meta is-error";
+    if (!statement.success) {
+      meta.textContent = "failed";
+    } else if (statement.result && statement.result.rowCount > 0) {
+      meta.textContent = `${statement.result.rowCount} row(s)`;
+    } else {
+      meta.textContent = "no rows";
+    }
+
+    header.appendChild(title);
+    header.appendChild(meta);
+    block.appendChild(header);
+
+    if (!statement.success) {
+      const error = document.createElement("p");
+      error.className = "result-error";
+      error.textContent = statement.error || "Statement failed.";
+      block.appendChild(error);
+    } else if (statement.result && statement.result.rowCount > 0) {
+      block.appendChild(buildResultsTable(statement.result));
+    } else {
+      const ok = document.createElement("p");
+      ok.className = "result-success";
+      ok.textContent = statement.message || "Statement executed successfully.";
+      block.appendChild(ok);
+    }
+
+    els.resultsContainer.appendChild(block);
   }
 
+  if (failed) {
+    const skipped = document.createElement("p");
+    skipped.className = "result-block-skipped";
+    skipped.textContent = `Stopped after statement ${failed.index}; any remaining statements were not run.`;
+    els.resultsContainer.appendChild(skipped);
+  }
+}
+
+/** Builds the results table for a result set (no container side effects). */
+function buildResultsTable(result) {
   const table = document.createElement("table");
   table.className = "results-table";
 
@@ -193,9 +253,19 @@ function renderResults(result, message) {
   }
   table.appendChild(tbody);
 
+  return table;
+}
+
+function renderResults(result, message) {
+  if (!result || result.rows.length === 0) {
+    els.resultsMeta.textContent = message || "0 rows";
+    els.resultsContainer.innerHTML = `<p class="result-success">${escapeHtml(message || "Query executed successfully.")}</p>`;
+    return;
+  }
+
   els.resultsMeta.textContent = message || `${result.rowCount} row(s)`;
   els.resultsContainer.innerHTML = "";
-  els.resultsContainer.appendChild(table);
+  els.resultsContainer.appendChild(buildResultsTable(result));
 }
 
 function renderError(error) {

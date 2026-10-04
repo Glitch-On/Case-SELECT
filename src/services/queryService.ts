@@ -1,4 +1,5 @@
-import type { ExecuteOutcome } from "../models/databaseProvider.ts";
+import type { ExecuteOutcome, StatementOutcome } from "../models/databaseProvider.ts";
+import { splitSqlStatements } from "../utils/sqlStatements.ts";
 import { getProvider } from "./providerManager.ts";
 import { connectionService } from "./connectionService.ts";
 import { schemaService } from "./schemaService.ts";
@@ -6,13 +7,77 @@ import { schemaService } from "./schemaService.ts";
 const history: string[] = [];
 
 export const queryService = {
-  /** Runs a SQL statement through the active provider. */
+  /**
+   * Runs a SQL script through the active provider.
+   *
+   * A script may contain several statements. The driver adapter cannot execute
+   * a multi-statement batch (node-postgres returns one result per statement),
+   * so the script is split and each statement is run on its own, in order,
+   * sharing one pinned connection so transaction control keeps working. Execution
+   * stops at the first failure; statements that already succeeded are still
+   * reported.
+   */
   async runQuery(sql: string): Promise<ExecuteOutcome> {
-    const outcome = await getProvider().executeQuery(sql);
-    if (outcome.success) {
+    const statements = splitSqlStatements(sql);
+
+    if (statements.length === 0) {
+      return { success: false, error: "No executable SQL statement found." };
+    }
+
+    // Single statement: unchanged behaviour and response shape.
+    if (statements.length === 1) {
+      const outcome = await getProvider().executeQuery(statements[0]);
+      if (outcome.success) {
+        history.push(sql);
+      }
+      return outcome;
+    }
+
+    const provider = getProvider();
+    const results: StatementOutcome[] = [];
+    let failure: StatementOutcome | null = null;
+
+    for (const [offset, statement] of statements.entries()) {
+      const index = offset + 1;
+      const outcome = await provider.executeQuery(statement);
+      const entry: StatementOutcome = { index, statement, success: outcome.success };
+
+      if (outcome.result) entry.result = outcome.result;
+      if (outcome.message) entry.message = outcome.message;
+      if (outcome.error) entry.error = outcome.error;
+
+      results.push(entry);
+      if (!outcome.success) {
+        failure = entry;
+        break;
+      }
+    }
+
+    if (results.some((entry) => entry.success)) {
       history.push(sql);
     }
-    return outcome;
+
+    const succeeded = results.filter((entry) => entry.success).length;
+    const total = statements.length;
+    const ran = results.length;
+
+    if (failure) {
+      return {
+        success: false,
+        statements: results,
+        message:
+          `Stopped at statement ${failure.index} of ${total} — ` +
+          `${succeeded} of ${ran} executed statement(s) succeeded.`,
+        error: `${failure.error ?? "Statement failed."} (statement ${failure.index} of ${total})`,
+      };
+    }
+
+    const rows = results.reduce((sum, entry) => sum + (entry.result?.rowCount ?? 0), 0);
+    return {
+      success: true,
+      statements: results,
+      message: `${total} statement(s) executed, ${rows} row(s) returned.`,
+    };
   },
 
   /**

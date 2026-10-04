@@ -60,6 +60,50 @@ npx prisma db push --schema prisma/schema.prisma
 back, so a typo can never silently point the IDE at the wrong database. Run
 `\status` in the terminal to confirm which database is active.
 
+## Multiple statements
+
+You can paste and run several statements at once. Each one runs in order and
+gets its own labelled result block, so results with different columns stay
+separate:
+
+```sql
+SELECT * FROM cases;
+SELECT * FROM guests;
+```
+
+Execution stops at the first failing statement: results from statements that
+already succeeded are still shown, and the error names the statement it came
+from.
+
+Statement splitting understands SQL properly, so semicolons inside string
+literals, quoted identifiers, `$$` dollar-quoted bodies, and comments are not
+mistaken for statement breaks:
+
+```sql
+SELECT ';' AS semicolon_in_a_string;   -- one statement
+SELECT $$a;b$$ AS dollar_quoted;       -- one statement
+```
+
+### Transactions
+
+`BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`, `ROLLBACK TO SAVEPOINT`, and
+`RELEASE` all work, in a single submission or across several. The provider pins
+its PostgreSQL pool to a single connection so transaction control reliably
+applies to the statements that follow it:
+
+```sql
+BEGIN;
+UPDATE cases SET "caseName" = 'Renamed' WHERE "caseId" = 1;
+ROLLBACK;   -- change discarded
+```
+
+Because every statement shares one connection, concurrent queries are executed
+one after another rather than in parallel.
+
+> `INSERT`/`UPDATE`/`DELETE` execute successfully but report `0 row(s)`: the raw
+> query API returns no result set for them, so affected-row counts are not
+> available.
+
 ## Terminal commands
 
 | Command       | Effect                              |
@@ -93,6 +137,7 @@ SELECT "caseName" FROM cases WHERE "caseId" = 1;
 | `npm run dev`         | Start the IDE with file watching          |
 | `npm start`           | Start the IDE                             |
 | `npm run db:generate` | Generate the Prisma client from `prisma/` |
+| `npm test`            | Run the test suite                        |
 
 ## Project layout
 

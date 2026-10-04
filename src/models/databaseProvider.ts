@@ -34,9 +34,27 @@ export interface ExecuteOutcome {
   success: boolean;
   /** Present when the statement returned rows (a query). */
   result?: QueryResult;
+  /**
+   * Present when a script contained more than one statement. Entries are in
+   * execution order and execution stops at the first failure, so a successful
+   * outcome may list fewer statements than the script contained.
+   */
+  statements?: StatementOutcome[];
   /** Human-readable feedback (row counts, command output, timing). */
   message?: string;
   /** Present when the statement or command failed. */
+  error?: string;
+}
+
+/** The result of running one statement from a multi-statement script. */
+export interface StatementOutcome {
+  /** 1-based position of the statement within the submitted script. */
+  index: number;
+  /** The SQL text that was sent to the database. */
+  statement: string;
+  success: boolean;
+  result?: QueryResult;
+  message?: string;
   error?: string;
 }
 

@@ -1,6 +1,8 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import type { DatabaseProvider, ExecuteOutcome, QueryResult, SchemaInfo } from "./databaseProvider.ts";
 import { serializeRows } from "../utils/serialize.ts";
+import { splitSqlStatements } from "../utils/sqlStatements.ts";
 import { config } from "../config/index.ts";
 
 /**
@@ -21,7 +23,13 @@ export class PrismaProvider implements DatabaseProvider {
       );
     }
     const { PrismaClient } = await import("../../generated/prisma/client.ts");
-    const adapter = new PrismaPg({ connectionString: config.databaseUrl });
+    // The pool is pinned to a single connection so transaction control (BEGIN /
+    // COMMIT / ROLLBACK / SAVEPOINT) reliably applies to the statements that
+    // follow it. With the adapter's default pool, a later statement could land
+    // on a different connection and silently escape the transaction.
+    const pool = new Pool({ connectionString: config.databaseUrl, max: 1 });
+    // Let Prisma end the pool on $disconnect() so teardown stays in one place.
+    const adapter = new PrismaPg(pool, { disposeExternalPool: true });
     this.client = new PrismaClient({ adapter });
     await this.client.$connect();
     this.connected = true;
@@ -94,6 +102,7 @@ export class PrismaProvider implements DatabaseProvider {
   async executeQuery(sql: string): Promise<ExecuteOutcome> {
     try {
       this.ensureConnected();
+      this.assertSingleStatement(sql);
       const start = performance.now();
       const raw = await this.client.$queryRawUnsafe(sql);
       const durationMs = Math.round((performance.now() - start) * 100) / 100;
@@ -114,6 +123,23 @@ export class PrismaProvider implements DatabaseProvider {
       };
     } catch (error) {
       return { success: false, error: this.messageOf(error) };
+    }
+  }
+
+  /**
+   * The driver adapter cannot execute a multi-statement script: node-postgres
+   * returns one result per statement and the adapter destructures that array as
+   * a single result, which surfaces as
+   * "Cannot read properties of undefined (reading 'map')". The query service
+   * splits scripts before calling in, so reaching this is a programming error —
+   * fail with something actionable instead of the adapter's TypeError.
+   */
+  private assertSingleStatement(sql: string): void {
+    const count = splitSqlStatements(sql).length;
+    if (count > 1) {
+      throw new Error(
+        `This provider executes one statement at a time; received a script with ${count} statements.`,
+      );
     }
   }
 
