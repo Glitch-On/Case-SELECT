@@ -34,9 +34,9 @@ model User {
 model UserProgress {
   id         Int            @id @default(autoincrement())
   userId     Int
-  caseId     Int
+  caseId     String
   status     ProgressStatus @default(IN_PROGRESS)
-  locationId Int? // current location ("at")
+  locationId String? // current location ("at")
   sequenceId Int? // current step in the case
 
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -51,7 +51,7 @@ model UserProgress {
 // ───────────── Cases, NPCs, dialogue, locations ─────────────
 
 model Case {
-  id       Int    @id @default(autoincrement())
+  id       String @id
   caseName String
 
   dialogues    Dialogue[] // "npc says"
@@ -65,7 +65,7 @@ model Case {
 }
 
 model Npc {
-  id      Int    @id @default(autoincrement())
+  id      String @id
   npcName String
 
   dialogues Dialogue[] // "said in" (NPC <-> Case via Dialogue)
@@ -74,7 +74,7 @@ model Npc {
 }
 
 model Location {
-  id           Int    @id @default(autoincrement())
+  id           String @id
   locationName String
 
   dialogues    Dialogue[]
@@ -85,10 +85,10 @@ model Location {
 }
 
 model Dialogue {
-  id            Int      @id @default(autoincrement())
-  caseId        Int
-  npcId         Int
-  locationId    Int?
+  id            String   @id
+  caseId        String
+  npcId         String
+  locationId    String?
   dialoguesList String[] // list of dialogue lines
 
   case     Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -106,13 +106,13 @@ model Dialogue {
 // Each row is one step: either a dialogue or an evidence, at a location,
 // optionally requiring a query.
 model CaseProgress {
-  id         Int  @id @default(autoincrement())
-  caseId     Int
+  id         String  @id
+  caseId     String
   sequenceId Int // order of the step within the case
-  dialogueId Int? // dialogueid / evidenceid (one of the two)
-  evidenceId Int?
-  locationId Int?
-  queryId    Int? // "determines"
+  dialogueId String? // dialogueid / evidenceid (one of the two)
+  evidenceId String?
+  locationId String?
+  queryId    String? // "determines"
 
   case         Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
   dialogue     Dialogue?      @relation(fields: [dialogueId], references: [id])
@@ -128,8 +128,8 @@ model CaseProgress {
 // ───────────── Evidence, queries, investigation tables ─────────────
 
 model Evidence {
-  id           Int    @id @default(autoincrement())
-  caseId       Int
+  id           String @id
+  caseId       String
   evidenceName String
 
   case    Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -141,8 +141,8 @@ model Evidence {
 }
 
 model Query {
-  id          Int    @id @default(autoincrement())
-  caseId      Int
+  id          String @id
+  caseId      String
   queryOutput String // expected output of the query
 
   case      Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -155,7 +155,7 @@ model Query {
 
 // Data tables (logs, transactions, accounts...) used in cases
 model InvestigationTable {
-  id        Int    @id @default(autoincrement())
+  id        String @id
   tableName String
 
   queryTables QueryTable[]
@@ -165,12 +165,140 @@ model InvestigationTable {
 
 // Which investigation tables are available to write queries for a case
 model QueryTable {
-  caseId  Int
-  tableId Int
+  caseId  String
+  tableId String
 
   case  Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
   table InvestigationTable @relation(fields: [tableId], references: [id], onDelete: Cascade) // "needed for"
 
   @@id([caseId, tableId])
   @@map("query_tables")
+}
+
+// ───────────── Actual investigation data ─────────────
+
+// People who attended the dinner
+model Guest {
+  id        String  @id @map("guest_id")
+  guestName String  @map("guest_name")
+  role      String
+  isSuspect Boolean @map("is_suspect")
+
+  orders RestaurantOrder[]
+
+  @@map("guests")
+}
+
+// Waiters who served the dinner
+// Names are optional because your current dataset only gives W001-W004 IDs.
+model Waiter {
+  id         String  @id
+  waiterName String? @map("waiter_name")
+
+  orders RestaurantOrder[]
+
+  @@map("waiters")
+}
+
+// Food orders placed during the dinner
+model RestaurantOrder {
+  id        String @id @map("order_id")
+  guestId   String @map("guest_id")
+  dish      String
+  orderTime String @map("order_time")
+  waiterId  String @map("waiter_id")
+
+  guest  Guest  @relation(fields: [guestId], references: [id])
+  waiter Waiter @relation(fields: [waiterId], references: [id])
+
+  @@index([guestId])
+  @@index([waiterId])
+  @@map("restaurant_orders")
+}
+
+// Employees working at the diner
+model Employee {
+  id           String @id @map("employee_id")
+  employeeName String @map("employee_name")
+  jobTitle     String @map("job_title")
+
+  kitchenLogs KitchenLog[]
+  accessCards AccessCard[]
+
+  @@map("employees")
+}
+
+// Records of employee activity inside the kitchen
+model KitchenLog {
+  id          String @id @map("log_id")
+  employeeId  String @map("employee_id")
+  action      String
+  timestamp   String
+  kitchenArea String @map("kitchen_area")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+  @@map("kitchen_logs")
+}
+
+// Electronic access-card records
+model AccessCard {
+  id         String @id @map("access_id")
+  employeeId String @map("employee_id")
+  accessArea String @map("access_area")
+  accessTime String @map("access_time")
+  action     String
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+  @@map("access_cards")
+}
+
+// Bank accounts belonging to employees or guests
+model BankAccount {
+  id            String @id @map("account_id")
+  accountNumber String @map("account_number")
+  ownerType     String @map("owner_type")
+  ownerId       String @map("owner_id")
+
+  sentPayments     Payment[]     @relation("PaymentSender")
+  receivedPayments Payment[]     @relation("PaymentReceiver")
+  phoneRecords     PhoneRecord[]
+
+  @@map("bank_accounts")
+}
+
+// Financial transactions
+model Payment {
+  id              String  @id @map("payment_id")
+  senderAccount   String  @map("sender_account")
+  receiverAccount String  @map("receiver_account")
+  amount          Int
+  paymentTime     String  @map("payment_time")
+  description     String?
+
+  sender   BankAccount @relation("PaymentSender", fields: [senderAccount], references: [id])
+  receiver BankAccount @relation("PaymentReceiver", fields: [receiverAccount], references: [id])
+
+  @@index([senderAccount])
+  @@index([receiverAccount])
+  @@map("payments")
+}
+
+// Phone activity associated with people in the investigation
+model PhoneRecord {
+  id                String @id @map("phone_record_id")
+  phoneNumber       String @map("phone_number")
+  ownerId           String @map("owner_id")
+  associatedAccount String @map("associated_account")
+  callTime          String @map("call_time")
+  duration          Int
+
+  bankAccount BankAccount @relation(fields: [associatedAccount], references: [id])
+
+  @@index([ownerId])
+  @@index([associatedAccount])
+  @@map("phone_records")
 }
