@@ -61,6 +61,16 @@ export const getCaseSteps = async (req, res) => {
       orderBy: {
         sequenceId: "asc",
       },
+      include: {
+        dialogue: {
+          include: {
+            npc: true,
+          },
+        },
+        evidence: true,
+        location: true,
+        query: true,
+      },
     });
 
     res.status(200).json(steps);
