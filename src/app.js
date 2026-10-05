@@ -3,6 +3,9 @@ import express from "express";
 import { config } from "./config/index.js";
 import routes from "./routes/index.js";
 import caseRouter from "./routes/case.router.js";
+import dialogueRouter from "./routes/dialogue.router.js";
+import locationRouter from "./routes/location.router.js";
+import queryRouter from "./routes/query.router.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -16,9 +19,12 @@ app.use("/views", express.static(config.paths.views));
 app.use(routes);
 
 app.use("/api/cases", caseRouter);
+app.use("/api/dialogues", dialogueRouter);
+app.use("/api/locations", locationRouter);
+app.use("/api/queries", queryRouter);
 
 app.get("/", (_req, res) => {
-    res.sendFile("index.html", { root: config.paths.views });
+  res.sendFile("index.html", { root: config.paths.views });
 });
 
 app.use(notFound);

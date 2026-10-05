@@ -1,8 +1,13 @@
-import { Router } from "express";
-import { getCase } from "../controllers/case.controller.js";
+import express from "express";
 
-const router = Router();
+import {
+  getCase,
+  getCaseSteps,
+} from "../controllers/case.controller.js";
 
+const router = express.Router();
+
+router.get("/:id/steps", getCaseSteps);
 router.get("/:id", getCase);
 
 export default router;

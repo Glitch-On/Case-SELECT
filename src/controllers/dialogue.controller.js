@@ -20,55 +20,34 @@ async function getPrisma() {
   return prisma;
 }
 
-export const getCase = async (req, res) => {
+export const getDialogue = async (req, res) => {
   try {
     const { id } = req.params;
 
     const client = await getPrisma();
 
-    const gameCase = await client.case.findUnique({
+    const dialogue = await client.dialogue.findUnique({
       where: {
         id: id,
       },
+      include: {
+        npc: true,
+        location: true,
+      },
     });
 
-    if (!gameCase) {
+    if (!dialogue) {
       return res.status(404).json({
-        message: "Case not found",
+        message: "Dialogue not found",
       });
     }
 
-    res.status(200).json(gameCase);
+    res.status(200).json(dialogue);
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
-      message: "Failed to fetch case",
-    });
-  }
-};
-
-export const getCaseSteps = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const client = await getPrisma();
-
-    const steps = await client.caseProgress.findMany({
-      where: {
-        caseId: id,
-      },
-      orderBy: {
-        sequenceId: "asc",
-      },
-    });
-
-    res.status(200).json(steps);
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: "Failed to fetch case steps",
+      message: "Failed to fetch dialogue",
     });
   }
 };
