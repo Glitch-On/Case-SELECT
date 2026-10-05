@@ -1,20 +1,19 @@
-import type { Request, Response } from "express";
-import { connectionService } from "../services/connectionService.ts";
-import { schemaService } from "../services/schemaService.ts";
-import { queryService } from "../services/queryService.ts";
+import { connectionService } from "../services/connectionService.js";
+import { schemaService } from "../services/schemaService.js";
+import { queryService } from "../services/queryService.js";
 
-function toMessage(error: unknown): string {
+function toMessage(error) {
   if (error instanceof Error) return error.message;
   return String(error);
 }
 
 export const sqlIdeController = {
-  async status(_req: Request, res: Response) {
+  async status(_req, res) {
     const status = await connectionService.status();
     res.json(status);
   },
 
-  async connect(_req: Request, res: Response) {
+  async connect(_req, res) {
     try {
       const status = await connectionService.connect();
       res.json(status);
@@ -23,12 +22,12 @@ export const sqlIdeController = {
     }
   },
 
-  async disconnect(_req: Request, res: Response) {
+  async disconnect(_req, res) {
     const status = await connectionService.disconnect();
     res.json(status);
   },
 
-  async schema(_req: Request, res: Response) {
+  async schema(_req, res) {
     try {
       const schema = await schemaService.loadSchema();
       res.json(schema);
@@ -37,7 +36,7 @@ export const sqlIdeController = {
     }
   },
 
-  async query(req: Request, res: Response) {
+  async query(req, res) {
     const sql = typeof req.body?.sql === "string" ? req.body.sql : "";
     if (!sql.trim()) {
       res.status(400).json({ success: false, error: "Request body must include a non-empty 'sql' string." });
@@ -51,7 +50,7 @@ export const sqlIdeController = {
     }
   },
 
-  async command(req: Request, res: Response) {
+  async command(req, res) {
     const input = typeof req.body?.input === "string" ? req.body.input : "";
     if (!input.trim()) {
       res.status(400).json({ success: false, error: "Request body must include a non-empty 'input' string." });

@@ -1,10 +1,9 @@
-import type { ExecuteOutcome, StatementOutcome } from "../models/databaseProvider.ts";
-import { splitSqlStatements } from "../utils/sqlStatements.ts";
-import { getProvider } from "./providerManager.ts";
-import { connectionService } from "./connectionService.ts";
-import { schemaService } from "./schemaService.ts";
+import { splitSqlStatements } from "../utils/sqlStatements.js";
+import { getProvider } from "./providerManager.js";
+import { connectionService } from "./connectionService.js";
+import { schemaService } from "./schemaService.js";
 
-const history: string[] = [];
+const history = [];
 
 export const queryService = {
   /**
@@ -17,7 +16,7 @@ export const queryService = {
    * stops at the first failure; statements that already succeeded are still
    * reported.
    */
-  async runQuery(sql: string): Promise<ExecuteOutcome> {
+  async runQuery(sql) {
     const statements = splitSqlStatements(sql);
 
     if (statements.length === 0) {
@@ -34,13 +33,13 @@ export const queryService = {
     }
 
     const provider = getProvider();
-    const results: StatementOutcome[] = [];
-    let failure: StatementOutcome | null = null;
+    const results = [];
+    let failure = null;
 
     for (const [offset, statement] of statements.entries()) {
       const index = offset + 1;
       const outcome = await provider.executeQuery(statement);
-      const entry: StatementOutcome = { index, statement, success: outcome.success };
+      const entry = { index, statement, success: outcome.success };
 
       if (outcome.result) entry.result = outcome.result;
       if (outcome.message) entry.message = outcome.message;
@@ -84,7 +83,7 @@ export const queryService = {
    * Runs a backslash command (psql-style) in the SQL/database terminal.
    * Returns terminal-friendly output.
    */
-  async runCommand(input: string): Promise<ExecuteOutcome> {
+  async runCommand(input) {
     const trimmed = input.trim();
     const [name, ...rest] = trimmed.slice(1).split(/\s+/);
     const command = (name ?? "").toLowerCase();
@@ -168,7 +167,7 @@ export const queryService = {
     }
   },
 
-  getHistory(): string[] {
+  getHistory() {
     return [...history];
   },
 };

@@ -2,12 +2,12 @@
   "name": "case-select",
   "version": "1.0.0",
   "description": "A web game, where people are given crime puzzles where they solve it using SQL commands.",
-  "main": "src/server.ts",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.ts",
-    "dev": "node --watch src/server.ts",
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
     "db:generate": "prisma generate --schema prisma/schema.prisma",
-    "test": "node --test \"test/**/*.test.ts\""
+    "test": "node --test \"test/**/*.test.js\""
   },
   "repository": {
     "type": "git",
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
-    "@types/pg": "^8.23.1"
+    "@types/pg": "^8.23.1",
+    "typescript": "^7.0.2"
   }
 }

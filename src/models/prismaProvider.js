@@ -1,9 +1,8 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import type { DatabaseProvider, ExecuteOutcome, QueryResult, SchemaInfo } from "./databaseProvider.ts";
-import { serializeRows } from "../utils/serialize.ts";
-import { splitSqlStatements } from "../utils/sqlStatements.ts";
-import { config } from "../config/index.ts";
+import { serializeRows } from "../utils/serialize.js";
+import { splitSqlStatements } from "../utils/sqlStatements.js";
+import { config } from "../config/index.js";
 
 /**
  * Real-database provider backed by the application's main Prisma schema
@@ -11,12 +10,15 @@ import { config } from "../config/index.ts";
  * DATABASE_URL is supplied. It ships unconnected for the prototype — see
  * database.md for connection instructions.
  */
-export class PrismaProvider implements DatabaseProvider {
-  readonly dialect = "postgresql";
-  private client: any = null;
-  private connected = false;
+export class PrismaProvider {
+  dialect = "postgresql";
 
-  async connect(): Promise<void> {
+  constructor() {
+    this.client = null;
+    this.connected = false;
+  }
+
+  async connect() {
     if (!config.databaseUrl) {
       throw new Error(
         "DATABASE_URL is not set. The database is not connected yet — see database.md.",
@@ -35,7 +37,7 @@ export class PrismaProvider implements DatabaseProvider {
     this.connected = true;
   }
 
-  async disconnect(): Promise<void> {
+  async disconnect() {
     if (this.client) {
       await this.client.$disconnect();
       this.client = null;
@@ -53,7 +55,7 @@ export class PrismaProvider implements DatabaseProvider {
     };
   }
 
-  async getSchema(): Promise<SchemaInfo> {
+  async getSchema() {
     this.ensureConnected();
     const tables = await this.client.$queryRawUnsafe(
       `SELECT table_name FROM information_schema.tables
@@ -63,9 +65,9 @@ export class PrismaProvider implements DatabaseProvider {
        ORDER BY table_name`,
     );
 
-    const result: SchemaInfo = { tables: [] };
+    const result = { tables: [] };
     for (const row of tables) {
-      const tableName = row.table_name as string;
+      const tableName = row.table_name;
       const columns = await this.client.$queryRawUnsafe(
         `SELECT c.column_name,
                 c.data_type,
@@ -88,7 +90,7 @@ export class PrismaProvider implements DatabaseProvider {
       );
       result.tables.push({
         name: tableName,
-        columns: columns.map((c: any) => ({
+        columns: columns.map((c) => ({
           name: c.column_name,
           type: c.data_type,
           nullable: c.is_nullable === "YES",
@@ -99,7 +101,7 @@ export class PrismaProvider implements DatabaseProvider {
     return result;
   }
 
-  async executeQuery(sql: string): Promise<ExecuteOutcome> {
+  async executeQuery(sql) {
     try {
       this.ensureConnected();
       this.assertSingleStatement(sql);
@@ -134,7 +136,7 @@ export class PrismaProvider implements DatabaseProvider {
    * splits scripts before calling in, so reaching this is a programming error —
    * fail with something actionable instead of the adapter's TypeError.
    */
-  private assertSingleStatement(sql: string): void {
+  assertSingleStatement(sql) {
     const count = splitSqlStatements(sql).length;
     if (count > 1) {
       throw new Error(
@@ -143,13 +145,13 @@ export class PrismaProvider implements DatabaseProvider {
     }
   }
 
-  private ensureConnected(): void {
+  ensureConnected() {
     if (!this.connected || !this.client) {
       throw new Error("Not connected to a database. Run \\connect first.");
     }
   }
 
-  private messageOf(error: unknown): string {
+  messageOf(error) {
     if (error instanceof Error) {
       const raw = error.message;
       const match = raw.match(/Raw query failed\. Code: `[^`]+`\. Message: `([^`]+)`/);
