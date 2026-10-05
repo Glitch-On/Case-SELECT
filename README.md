@@ -14,14 +14,15 @@ configured database. It provides:
 - An explicit database connection interface (`Connect` / `Disconnect`)
 
 The IDE talks to the database only through a provider interface
-(`src/models/databaseProvider.ts`), so switching databases is a configuration
+(`src/models/databaseProvider.js`), so switching databases is a configuration
 change rather than a code change.
 
 > Full connection, setup, and API details: **[`database.md`](database.md)**
 
 ## Requirements
 
-- Node.js 22.18+ (runs the TypeScript sources directly via native type stripping)
+- Node.js 22.18+ (Prisma 7 generates a TypeScript client that Node loads
+  natively, so the 22.18 type-stripping support is still required)
 - A PostgreSQL database
 
 No native build toolchain is required — `npm install` needs neither Visual Studio

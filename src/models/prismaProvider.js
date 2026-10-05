@@ -1,7 +1,9 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+
 import { serializeRows } from "../utils/serialize.js";
 import { splitSqlStatements } from "../utils/sqlStatements.js";
+
 import { config } from "../config/index.js";
 
 /**
@@ -13,10 +15,8 @@ import { config } from "../config/index.js";
 export class PrismaProvider {
   dialect = "postgresql";
 
-  constructor() {
-    this.client = null;
-    this.connected = false;
-  }
+  #client = null;
+  #connected = false;
 
   async connect() {
     if (!config.databaseUrl) {
@@ -24,32 +24,39 @@ export class PrismaProvider {
         "DATABASE_URL is not set. The database is not connected yet — see database.md.",
       );
     }
+
     const { PrismaClient } = await import("../../generated/prisma/client.ts");
-    // The pool is pinned to a single connection so transaction control (BEGIN /
-    // COMMIT / ROLLBACK / SAVEPOINT) reliably applies to the statements that
-    // follow it. With the adapter's default pool, a later statement could land
-    // on a different connection and silently escape the transaction.
-    const pool = new Pool({ connectionString: config.databaseUrl, max: 1 });
-    // Let Prisma end the pool on $disconnect() so teardown stays in one place.
-    const adapter = new PrismaPg(pool, { disposeExternalPool: true });
-    this.client = new PrismaClient({ adapter });
-    await this.client.$connect();
-    this.connected = true;
+
+    const pool = new Pool({
+      connectionString: config.databaseUrl,
+      max: 1,
+    });
+
+    const adapter = new PrismaPg(pool, {
+      disposeExternalPool: true,
+    });
+
+    this.#client = new PrismaClient({ adapter });
+
+    await this.#client.$connect();
+
+    this.#connected = true;
   }
 
   async disconnect() {
-    if (this.client) {
-      await this.client.$disconnect();
-      this.client = null;
+    if (this.#client) {
+      await this.#client.$disconnect();
+      this.#client = null;
     }
-    this.connected = false;
+
+    this.#connected = false;
   }
 
   async getStatus() {
     return {
-      connected: this.connected,
+      connected: this.#connected,
       mode: "prisma",
-      message: this.connected
+      message: this.#connected
         ? "Connected to the application database (PostgreSQL via Prisma)."
         : "Disconnected. Set DATABASE_URL and run \\connect to attach to the real database.",
     };
@@ -57,7 +64,8 @@ export class PrismaProvider {
 
   async getSchema() {
     this.ensureConnected();
-    const tables = await this.client.$queryRawUnsafe(
+
+    const tables = await this.#client.$queryRawUnsafe(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = current_schema()
          AND table_type = 'BASE TABLE'
@@ -66,9 +74,11 @@ export class PrismaProvider {
     );
 
     const result = { tables: [] };
+
     for (const row of tables) {
       const tableName = row.table_name;
-      const columns = await this.client.$queryRawUnsafe(
+
+      const columns = await this.#client.$queryRawUnsafe(
         `SELECT c.column_name,
                 c.data_type,
                 c.is_nullable,
@@ -88,6 +98,7 @@ export class PrismaProvider {
          ORDER BY c.ordinal_position`,
         tableName,
       );
+
       result.tables.push({
         name: tableName,
         columns: columns.map((c) => ({
@@ -98,6 +109,7 @@ export class PrismaProvider {
         })),
       });
     }
+
     return result;
   }
 
@@ -105,26 +117,44 @@ export class PrismaProvider {
     try {
       this.ensureConnected();
       this.assertSingleStatement(sql);
+
       const start = performance.now();
-      const raw = await this.client.$queryRawUnsafe(sql);
-      const durationMs = Math.round((performance.now() - start) * 100) / 100;
+
+      const raw = await this.#client.$queryRawUnsafe(sql);
+
+      const durationMs =
+        Math.round((performance.now() - start) * 100) / 100;
 
       if (!Array.isArray(raw) || raw.length === 0) {
         return {
           success: true,
-          result: { columns: [], rows: [], rowCount: 0, durationMs },
+          result: {
+            columns: [],
+            rows: [],
+            rowCount: 0,
+            durationMs,
+          },
           message: `Query executed successfully. ${durationMs} ms`,
         };
       }
 
       const { rows, columns } = serializeRows(raw);
+
       return {
         success: true,
-        result: { columns, rows, rowCount: rows.length, durationMs },
+        result: {
+          columns,
+          rows,
+          rowCount: rows.length,
+          durationMs,
+        },
         message: `${rows.length} row(s) returned in ${durationMs} ms`,
       };
     } catch (error) {
-      return { success: false, error: this.messageOf(error) };
+      return {
+        success: false,
+        error: this.messageOf(error),
+      };
     }
   }
 
@@ -138,6 +168,7 @@ export class PrismaProvider {
    */
   assertSingleStatement(sql) {
     const count = splitSqlStatements(sql).length;
+
     if (count > 1) {
       throw new Error(
         `This provider executes one statement at a time; received a script with ${count} statements.`,
@@ -146,7 +177,7 @@ export class PrismaProvider {
   }
 
   ensureConnected() {
-    if (!this.connected || !this.client) {
+    if (!this.#connected || !this.#client) {
       throw new Error("Not connected to a database. Run \\connect first.");
     }
   }
@@ -154,12 +185,22 @@ export class PrismaProvider {
   messageOf(error) {
     if (error instanceof Error) {
       const raw = error.message;
-      const match = raw.match(/Raw query failed\. Code: `[^`]+`\. Message: `([^`]+)`/);
+
+      const match = raw.match(
+        /Raw query failed\. Code: `[^\`]+`\. Message: `([^\`]+)`/,
+      );
+
       if (match) return match[1];
-      const invocation = raw.match(/Invalid `[^`]+` invocation:\s*([\s\S]*)/);
+
+      const invocation = raw.match(
+        /Invalid `[^\`]+` invocation:\s*([\s\S]*)/,
+      );
+
       if (invocation) return invocation[1].trim();
+
       return raw;
     }
+
     return String(error);
   }
 }

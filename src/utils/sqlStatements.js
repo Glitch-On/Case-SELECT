@@ -14,6 +14,16 @@
  *   - slash-star    block comment, ends at star-slash (nestable in PostgreSQL)
  */
 
+/**
+ * Scanner position. Fields:
+ *   quote             "'" or '"' while inside a quoted literal/identifier or
+ *                     dollar-quoted body, otherwise null.
+ *   backslashEscapes  True for E'' / e'' strings, where backslash escapes apply.
+ *   dollarTag         Tag of the dollar-quoted body currently being read,
+ *                     e.g. `$$` or `$body$`, otherwise null.
+ *   blockDepth        Current nesting depth of block comments.
+ *   inLineComment     True when the next character ends the current line comment.
+ */
 function createState() {
   return {
     quote: null,
@@ -31,30 +41,41 @@ function createState() {
  */
 function matchDollarTag(sql, at) {
   if (sql[at] !== "$") return null;
+
   let i = at + 1;
+
   while (i < sql.length) {
     const ch = sql[i];
+
     if (ch === "$") return sql.slice(at, i + 1);
+
     const isTagStart = i === at + 1;
-    if (!(ch === "_" || /[A-Za-z]/.test(ch) || (!isTagStart && /[0-9]/.test(ch)))) {
+
+    if (
+      !(ch === "_" || /[A-Za-z]/.test(ch) || (!isTagStart && /[0-9]/.test(ch)))
+    ) {
       return null;
     }
+
     i += 1;
   }
+
   return null;
 }
 
 /**
  * True when a fragment contains something the database can actually execute.
  * A fragment made only of whitespace and comments is not a statement, so it is
- * dropped rather than sent as a pointless round-trip. Comment removal here is
- * deliberately naive: it only guards a boolean, so being imprecise inside a
- * string literal can at worst keep a fragment we would otherwise have dropped.
+ * dropped rather than sent as a pointless round-trip.
+ * Comment removal here is deliberately naive: it only guards a boolean, so being
+ * imprecise inside a string literal can at worst keep a fragment we would otherwise
+ * have dropped.
  */
 function hasExecutableContent(text) {
   const withoutComments = text
     .replace(/\/\*[\s\S]*?\*\//g, " ")
     .replace(/--[^\n]*/g, " ");
+
   return withoutComments.trim().length > 0;
 }
 
@@ -65,12 +86,15 @@ function hasExecutableContent(text) {
  */
 export function splitSqlStatements(sql) {
   const statements = [];
+
   const state = createState();
+
   let start = 0;
   let i = 0;
 
   const push = (end) => {
     const text = sql.slice(start, end);
+
     if (hasExecutableContent(text)) statements.push(text);
   };
 
@@ -81,6 +105,7 @@ export function splitSqlStatements(sql) {
     // ── Line comment: -- to end of line ──
     if (state.inLineComment) {
       if (ch === "\n") state.inLineComment = false;
+
       i += 1;
       continue;
     }
@@ -92,11 +117,13 @@ export function splitSqlStatements(sql) {
         i += 2;
         continue;
       }
+
       if (ch === "*" && next === "/") {
         state.blockDepth -= 1;
         i += 2;
         continue;
       }
+
       i += 1;
       continue;
     }
@@ -108,6 +135,7 @@ export function splitSqlStatements(sql) {
         state.dollarTag = null;
         continue;
       }
+
       i += 1;
       continue;
     }
@@ -118,17 +146,20 @@ export function splitSqlStatements(sql) {
         i += 2;
         continue;
       }
+
       if (ch === state.quote) {
         // Doubled quote is an escaped quote, not a terminator.
         if (next === state.quote) {
           i += 2;
           continue;
         }
+
         state.quote = null;
         state.backslashEscapes = false;
         i += 1;
         continue;
       }
+
       i += 1;
       continue;
     }
@@ -139,21 +170,26 @@ export function splitSqlStatements(sql) {
       i += 2;
       continue;
     }
+
     if (ch === "/" && next === "*") {
       state.blockDepth = 1;
       i += 2;
       continue;
     }
+
     if (ch === "'" || ch === '"') {
       state.quote = ch;
       state.backslashEscapes = false;
       i += 1;
       continue;
     }
+
     // E'' / e'' escape strings honour backslash escapes.
     if ((ch === "E" || ch === "e") && next === "'") {
       const before = sql[i - 1];
-      const startsToken = before === undefined || !/[A-Za-z0-9_$]/.test(before);
+      const startsToken =
+        before === undefined || !/[A-Za-z0-9_$]/.test(before);
+
       if (startsToken) {
         state.quote = "'";
         state.backslashEscapes = true;
@@ -161,14 +197,17 @@ export function splitSqlStatements(sql) {
         continue;
       }
     }
+
     if (ch === "$") {
       const tag = matchDollarTag(sql, i);
+
       if (tag) {
         state.dollarTag = tag;
         i += tag.length;
         continue;
       }
     }
+
     if (ch === ";") {
       push(i);
       i += 1;
@@ -180,6 +219,7 @@ export function splitSqlStatements(sql) {
   }
 
   push(sql.length);
+
   return statements;
 }
 
@@ -201,6 +241,7 @@ export function isTransactionControl(sql) {
     .toLowerCase()
     .replace(/;+$/, "")
     .trim();
+
   return /^(begin|start transaction|commit|end|rollback|savepoint|release|rollback to|prepare transaction|commit prepared|rollback prepared)\b/.test(
     normalized,
   );

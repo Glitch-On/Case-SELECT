@@ -57,7 +57,6 @@ export const config = {
   // Paths are resolved relative to the project root (one level up from src/).
   paths: {
     root: path.join(__dirname, "..", ".."),
-    mainClient: path.join(__dirname, "..", "..", "generated", "prisma", "client.ts"),
     views: path.join(__dirname, "..", "views"),
     public: path.join(__dirname, "..", "..", "public"),
   },
