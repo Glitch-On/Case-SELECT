@@ -4,9 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export type DatabaseMode = "prisma";
-
-const DB_MODE_ALIASES: Record<string, DatabaseMode> = {
+const DB_MODE_ALIASES = {
   prisma: "prisma",
   postgres: "prisma",
   postgresql: "prisma",
@@ -22,7 +20,7 @@ const REMOVED_DB_MODES = new Set(["dummy", "sqlite"]);
  * rather than defaulting, so a typo can never silently point the IDE at the
  * wrong database. An unset or blank value falls back to the default (prisma).
  */
-function resolveDatabaseMode(raw: string | undefined): DatabaseMode {
+function resolveDatabaseMode(raw) {
   const value = (raw ?? "").trim().toLowerCase();
   if (value === "") {
     return "prisma";
@@ -59,8 +57,7 @@ export const config = {
   // Paths are resolved relative to the project root (one level up from src/).
   paths: {
     root: path.join(__dirname, "..", ".."),
-    mainClient: path.join(__dirname, "..", "..", "generated", "prisma", "client.ts"),
     views: path.join(__dirname, "..", "views"),
     public: path.join(__dirname, "..", "..", "public"),
   },
-} as const;
+};

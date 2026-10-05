@@ -5,7 +5,7 @@ import {
   isMultiStatement,
   isTransactionControl,
   splitSqlStatements,
-} from "../src/utils/sqlStatements.ts";
+} from "../src/utils/sqlStatements.js";
 
 /**
  * The splitter strips the trailing `;` terminator from each statement (PostgreSQL

@@ -2,7 +2,7 @@
 
 The SQL IDE connects to **PostgreSQL** by default. It is database-agnostic in
 design: the IDE talks to the database only through a provider interface
-(`src/models/databaseProvider.ts`), so the active database is a configuration
+(`src/models/databaseProvider.js`), so the active database is a configuration
 decision rather than a code change.
 
 ---
@@ -21,12 +21,12 @@ Every provider implements one contract:
 
 One provider ships with the project:
 
-- **`PrismaProvider`** (`src/models/prismaProvider.ts`) — **default and only.** The
+- **`PrismaProvider`** (`src/models/prismaProvider.js`) — **default and only.** The
   application's PostgreSQL database, accessed through the main Prisma schema
   (`prisma/schema.prisma`) and the `@prisma/adapter-pg` driver adapter.
 
 The provider is selected by the `DB_MODE` environment variable in
-`src/models/providerFactory.ts` (default: `prisma`).
+`src/models/providerFactory.js` (default: `prisma`).
 
 ### Connection pinning
 
@@ -46,7 +46,7 @@ multi-statement batch: `node-postgres` returns one result per statement and
 as `Cannot read properties of undefined (reading 'map')`.
 
 `queryService.runQuery()` therefore splits the script first (see
-`src/utils/sqlStatements.ts`) and calls the provider once per statement,
+`src/utils/sqlStatements.js`) and calls the provider once per statement,
 returning an ordered `statements[]` array. The provider also rejects a
 multi-statement string defensively, so an adapter `TypeError` can never reach
 the user.

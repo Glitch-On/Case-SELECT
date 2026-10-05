@@ -14,20 +14,17 @@
  *   - slash-star    block comment, ends at star-slash (nestable in PostgreSQL)
  */
 
-interface ScannerState {
-  /** Set while inside a quoted literal/identifier or dollar-quoted body. */
-  quote: "'" | '"' | null;
-  /** Set for E'' / e'' strings, where backslash escapes apply. */
-  backslashEscapes: boolean;
-  /** Tag of the dollar-quoted body currently being read, e.g. `$$` or `$body$`. */
-  dollarTag: string | null;
-  /** Current nesting depth of block comments. */
-  blockDepth: number;
-  /** True when the next character ends the current line comment. */
-  inLineComment: boolean;
-}
-
-function createState(): ScannerState {
+/**
+ * Scanner position. Fields:
+ *   quote             "'" or '"' while inside a quoted literal/identifier or
+ *                     dollar-quoted body, otherwise null.
+ *   backslashEscapes  True for E'' / e'' strings, where backslash escapes apply.
+ *   dollarTag         Tag of the dollar-quoted body currently being read,
+ *                     e.g. `$$` or `$body$`, otherwise null.
+ *   blockDepth        Current nesting depth of block comments.
+ *   inLineComment     True when the next character ends the current line comment.
+ */
+function createState() {
   return {
     quote: null,
     backslashEscapes: false,
@@ -42,7 +39,7 @@ function createState(): ScannerState {
  * Postgres tags follow the identifier rules, so a bare `$1` placeholder is not
  * a valid tag and is correctly rejected.
  */
-function matchDollarTag(sql: string, at: number): string | null {
+function matchDollarTag(sql, at) {
   if (sql[at] !== "$") return null;
   let i = at + 1;
   while (i < sql.length) {
@@ -64,7 +61,7 @@ function matchDollarTag(sql: string, at: number): string | null {
  * deliberately naive: it only guards a boolean, so being imprecise inside a
  * string literal can at worst keep a fragment we would otherwise have dropped.
  */
-function hasExecutableContent(text: string): boolean {
+function hasExecutableContent(text) {
   const withoutComments = text
     .replace(/\/\*[\s\S]*?\*\//g, " ")
     .replace(/--[^\n]*/g, " ");
@@ -76,13 +73,13 @@ function hasExecutableContent(text: string): boolean {
  * Each returned entry keeps its original text (minus the terminating `;`) so it
  * can be sent to the database verbatim.
  */
-export function splitSqlStatements(sql: string): string[] {
-  const statements: string[] = [];
+export function splitSqlStatements(sql) {
+  const statements = [];
   const state = createState();
   let start = 0;
   let i = 0;
 
-  const push = (end: number): void => {
+  const push = (end) => {
     const text = sql.slice(start, end);
     if (hasExecutableContent(text)) statements.push(text);
   };
@@ -197,7 +194,7 @@ export function splitSqlStatements(sql: string): string[] {
 }
 
 /** True when the script contains more than one statement. */
-export function isMultiStatement(sql: string): boolean {
+export function isMultiStatement(sql) {
   return splitSqlStatements(sql).length > 1;
 }
 
@@ -206,7 +203,7 @@ export function isMultiStatement(sql: string): boolean {
  * connection with the statements around them, which the IDE guarantees by
  * pinning the provider to a single connection.
  */
-export function isTransactionControl(sql: string): boolean {
+export function isTransactionControl(sql) {
   const normalized = sql
     .replace(/--[^\n]*/g, " ")
     .replace(/\/\*[\s\S]*?\*\//g, " ")

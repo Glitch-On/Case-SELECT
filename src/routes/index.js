@@ -1,5 +1,5 @@
 import { Router } from "express";
-import sqlIdeRoutes from "./sqlIdeRoutes.ts";
+import sqlIdeRoutes from "./sqlIdeRoutes.js";
 
 const router = Router();
 

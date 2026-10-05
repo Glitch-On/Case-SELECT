@@ -1,7 +1,7 @@
 import express from "express";
-import { config } from "./config/index.ts";
-import routes from "./routes/index.ts";
-import { errorHandler, notFound } from "./middleware/errorHandler.ts";
+import { config } from "./config/index.js";
+import routes from "./routes/index.js";
+import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 const app = express();
 

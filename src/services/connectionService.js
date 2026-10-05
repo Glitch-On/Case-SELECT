@@ -1,20 +1,19 @@
-import type { ConnectionStatus } from "../models/databaseProvider.ts";
-import { getProvider } from "./providerManager.ts";
+import { getProvider } from "./providerManager.js";
 
 export const connectionService = {
-  async connect(): Promise<ConnectionStatus> {
+  async connect() {
     const provider = getProvider();
     await provider.connect();
     return provider.getStatus();
   },
 
-  async disconnect(): Promise<ConnectionStatus> {
+  async disconnect() {
     const provider = getProvider();
     await provider.disconnect();
     return provider.getStatus();
   },
 
-  async status(): Promise<ConnectionStatus> {
+  async status() {
     return getProvider().getStatus();
   },
 };

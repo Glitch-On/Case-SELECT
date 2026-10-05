@@ -1,5 +1,5 @@
-import app from "./app.ts";
-import { config } from "./config/index.ts";
+import app from "./app.js";
+import { config } from "./config/index.js";
 
 app.listen(config.port, () => {
   console.log(`SQL IDE listening on http://localhost:${config.port}`);

@@ -3,19 +3,16 @@
  * column names shared by every row. BigInt and Date are not JSON-serializable
  * out of the box, so they are normalized here.
  */
-export function serializeRows(raw: unknown[]): {
-  columns: string[];
-  rows: Record<string, unknown>[];
-} {
+export function serializeRows(raw) {
   if (raw.length === 0) {
     return { columns: [], rows: [] };
   }
 
-  const columns = Object.keys(raw[0] as Record<string, unknown>);
+  const columns = Object.keys(raw[0]);
   const rows = raw.map((row) => {
-    const out: Record<string, unknown> = {};
+    const out = {};
     for (const column of columns) {
-      out[column] = serializeValue((row as Record<string, unknown>)[column]);
+      out[column] = serializeValue(row[column]);
     }
     return out;
   });
@@ -23,7 +20,7 @@ export function serializeRows(raw: unknown[]): {
   return { columns, rows };
 }
 
-function serializeValue(value: unknown): unknown {
+function serializeValue(value) {
   if (typeof value === "bigint") {
     return Number(value);
   }
