@@ -1,0 +1,235 @@
+/*
+ * Case-SELECT — design tokens & pixel-art base layer.
+ *
+ * One centralised token set drives every page. Themes are switched by setting
+ * `data-theme` on <html>, so light/dark never diverge per component.
+ *
+ * Imported from index.css.
+ */
+
+/* ────────────────────────────── Tokens ────────────────────────────── */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Core palette — warm ivory / amber detective desk */
+  --bg-primary: #fffdf5;
+  --bg-secondary: #fff7d6;
+  --bg-tertiary: #ffe58a;
+  --bg-panel: #fffdf5;
+  --bg-inset: #fff7d6;
+
+  --accent-primary: #ffd23f;
+  --accent-secondary: #e6a800;
+  --accent-text: #3a2a12;
+
+  --text-primary: #3a2a12;
+  --text-secondary: #6b5324;
+  --text-muted: #9a8250;
+  --text-inverse: #fffdf5;
+
+  --border-primary: #e6a800;
+  --border-secondary: #d4b978;
+  --border-strong: #3a2a12;
+
+  /* Status colours (highlights, not the base palette) */
+  --success: #2f9e44;
+  --success-bg: #d3f9d8;
+  --success-border: #2f9e44;
+  --success-text: #1b5e20;
+
+  --warning: #f08c00;
+  --warning-bg: #fff3bf;
+  --warning-border: #f08c00;
+  --warning-text: #7a4b00;
+
+  --danger: #c92a2a;
+  --danger-bg: #ffe3e3;
+  --danger-border: #c92a2a;
+  --danger-text: #8b1a1a;
+
+  --info: #1971c2;
+  --info-bg: #d0ebff;
+  --info-border: #1971c2;
+  --info-text: #0b3d75;
+
+  --evidence: #0c8599;
+  --evidence-bg: #c5f6fa;
+  --evidence-border: #0c8599;
+  --evidence-text: #064f5c;
+
+  --special: #7048e8;
+  --special-bg: #e5dbff;
+  --special-border: #7048e8;
+  --special-text: #3b2580;
+
+  /* Effects */
+  --shadow-sm: 2px 2px 0 var(--border-primary);
+  --shadow-md: 4px 4px 0 var(--border-primary);
+  --shadow-lg: 6px 6px 0 var(--border-primary);
+  --pixel-text-shadow: 1px 1px 0 var(--border-secondary);
+  --overlay: rgba(58, 42, 18, 0.55);
+  --grid-line: rgba(58, 42, 18, 0.07);
+
+  /* Typography */
+  --font-pixel: "Press Start 2P", "Courier New", monospace;
+  --font-terminal: "VT323", "Courier New", monospace;
+  --font-ui: "VT323", "Courier New", monospace;
+  --font-body: "VT323", "Courier New", monospace;
+
+  /* Geometry — chunky, never rounded-soft */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --border-w: 2px;
+  --border-w-thick: 3px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Core palette — near-black / amber terminal */
+  --bg-primary: #0d0d0d;
+  --bg-secondary: #17130f;
+  --bg-tertiary: #24180d;
+  --bg-panel: #17130f;
+  --bg-inset: #0d0d0d;
+
+  --accent-primary: #ff8a00;
+  --accent-secondary: #ffb52e;
+  --accent-text: #0d0d0d;
+
+  --text-primary: #fff1d0;
+  --text-secondary: #e0cfa8;
+  --text-muted: #a08f6d;
+  --text-inverse: #0d0d0d;
+
+  --border-primary: #ff8a00;
+  --border-secondary: #7a4a12;
+  --border-strong: #ffb52e;
+
+  --success: #40c057;
+  --success-bg: #10301a;
+  --success-border: #2f9e44;
+  --success-text: #8ce99a;
+
+  --warning: #ffd43b;
+  --warning-bg: #33280a;
+  --warning-border: #f08c00;
+  --warning-text: #ffe066;
+
+  --danger: #ff6b6b;
+  --danger-bg: #3a1212;
+  --danger-border: #c92a2a;
+  --danger-text: #ffa8a8;
+
+  --info: #4dabf7;
+  --info-bg: #0b2436;
+  --info-border: #1971c2;
+  --info-text: #a5d8ff;
+
+  --evidence: #3bc9db;
+  --evidence-bg: #062a2f;
+  --evidence-border: #0c8599;
+  --evidence-text: #99e9f0;
+
+  --special: #b197fc;
+  --special-bg: #1e1533;
+  --special-border: #7048e8;
+  --special-text: #d0bfff;
+
+  --shadow-sm: 2px 2px 0 #000;
+  --shadow-md: 4px 4px 0 #000;
+  --shadow-lg: 6px 6px 0 #000;
+  --pixel-text-shadow: 1px 1px 0 #000;
+  --overlay: rgba(0, 0, 0, 0.7);
+  --grid-line: rgba(255, 138, 0, 0.06);
+}
+
+/* ────────────────────────────── Base ────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Subtle pixel texture — a faint dot grid over the page background. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(var(--grid-line) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-ui);
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0;
+  text-shadow: var(--pixel-text-shadow);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent-secondary);
+}
+
+/* Keyboard focus stays visible for accessibility. */
+:focus-visible {
+  outline: var(--border-w) solid var(--accent-secondary);
+  outline-offset: 2px;
+}
+
+/* Scrollbars in keeping with the terminal look. */
+* {
+  scrollbar-color: var(--border-primary) var(--bg-secondary);
+  scrollbar-width: thin;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
