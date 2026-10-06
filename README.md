@@ -404,15 +404,20 @@ them, `frontend/src/api/client.js` is the only file that needs updating.
 { "id": "C001", "caseName": "…" }
 
 // GET /api/cases/:id/steps
+// dialogue/evidence/location/query are null when the step has none
 [{ "id": "S001", "caseId": "C001", "sequenceId": 1,
-   "dialogue": { "id": "D001", "dialoguesList": ["…"], "npc": { "id": "N001", "npcName": "NPC1" } },
-   "evidence": { "id": "EV001", "evidenceName": "…" },
-   "location": { "id": "L001", "locationName": "…" },
-   "query": { "id": "Q001", "queryOutput": "…" } }]
+   "dialogueId": "D001", "evidenceId": null, "locationId": "L001", "queryId": null,
+   "dialogue": { "id": "D001", "caseId": "C001", "npcId": "N001", "locationId": "L001",
+                 "dialoguesList": ["…"],
+                 "npc": { "id": "N001", "npcName": "NPC1" } },
+   "evidence": null,
+   "location": { "id": "L001", "locationName": "The Red Lantern Diner" },
+   "query": null }]
 
 // GET /api/users/:id/progress
-[{ "userId": 2, "caseId": "C001", "status": "COMPLETED",
-   "sequenceId": 3, "locationId": "L001", "locationName": "…" }]
+// sequenceId/locationId/locationName are null unless the player is mid-step
+[{ "id": 5, "userId": 2, "caseId": "C001", "status": "COMPLETED",
+   "sequenceId": null, "locationId": null, "locationName": null }]
 
 // POST /api/queries/:id/execute
 { "queryId": "Q001", "success": true, "result": [{ "column": "value" }] }
