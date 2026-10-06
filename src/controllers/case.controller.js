@@ -20,6 +20,45 @@ async function getPrisma() {
   return prisma;
 }
 
+/**
+ * Lists every case for the frontend case-select grid.
+ *
+ * Read-only passthrough used by the dashboard; it introduces no game rules.
+ * `stepCount` is a plain count of the case's CaseProgress rows so the UI can
+ * show progress without loading every step.
+ */
+export const getCases = async (_req, res) => {
+  try {
+    const client = await getPrisma();
+
+    const cases = await client.case.findMany({
+      orderBy: {
+        id: "asc",
+      },
+      include: {
+        _count: {
+          select: {
+            steps: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json(
+      cases.map(({ _count, ...rest }) => ({
+        ...rest,
+        stepCount: _count.steps,
+      })),
+    );
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to fetch cases",
+    });
+  }
+};
+
 export const getCase = async (req, res) => {
   try {
     const { id } = req.params;
