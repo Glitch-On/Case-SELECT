@@ -6,6 +6,7 @@ import caseRouter from "./routes/case.router.js";
 import dialogueRouter from "./routes/dialogue.router.js";
 import locationRouter from "./routes/location.router.js";
 import queryRouter from "./routes/query.router.js";
+import userRouter from "./routes/user.router.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -28,6 +29,7 @@ app.use("/api/cases", caseRouter);
 app.use("/api/dialogues", dialogueRouter);
 app.use("/api/locations", locationRouter);
 app.use("/api/queries", queryRouter);
+app.use("/api/users", userRouter);
 
 app.get("/", (_req, res) => {
   res.sendFile("index.html", { root: config.paths.views });
